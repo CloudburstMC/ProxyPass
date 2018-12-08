@@ -12,10 +12,10 @@ pipeline {
             steps {
                 sh 'mvn clean package'
             }
-        }
-        post {
-            success {
-                archiveArtifacts artifacts: 'target/proxypass-*-SNAPSHOT.jar', fingerprint: true
+            post {
+                success {
+                    archiveArtifacts artifacts: 'target/proxypass-*-SNAPSHOT.jar', fingerprint: true
+                }
             }
         }
     }
