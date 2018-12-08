@@ -1,0 +1,13 @@
+## Address proxy will bind to.
+proxy:
+  host: 127.0.0.1
+  port: 19122
+## Destination server which the client will connect to.
+## You are only able to join offline mode servers
+destination:
+  host: 127.0.0.1
+  port: 19132
+## Pass packet buffers through to minimize processing (Disable to test protocol library for bugs)
+pass-through: true
+## Log packets for each session
+log-packets: true
