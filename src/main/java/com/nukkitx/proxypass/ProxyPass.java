@@ -6,7 +6,7 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
 import com.nukkitx.network.raknet.RakNetClient;
 import com.nukkitx.network.raknet.RakNetServer;
 import com.nukkitx.protocol.bedrock.session.BedrockSession;
-import com.nukkitx.protocol.bedrock.v291.Bedrock_v291;
+import com.nukkitx.protocol.bedrock.v313.Bedrock_v313;
 import com.nukkitx.protocol.bedrock.wrapper.WrappedPacket;
 import com.nukkitx.proxypass.network.NukkitSessionManager;
 import com.nukkitx.proxypass.network.ProxyRakNetEventListener;
@@ -33,7 +33,7 @@ public class ProxyPass {
     public static final ObjectMapper JSON_MAPPER = new ObjectMapper().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
     public static final YAMLMapper YAML_MAPPER = (YAMLMapper) new YAMLMapper().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
     public static final String MINECRAFT_VERSION;
-    public static final int PROTOCOL_VERSION = 291;
+    public static final int PROTOCOL_VERSION = 313;
 
     static {
         String minecraftVersion;
@@ -100,7 +100,7 @@ public class ProxyPass {
         rakNetClient = new RakNetClient.Builder<BedrockSession<ProxyPlayerSession>>()
                 .packet(WrappedPacket::new, 0xfe)
                 .sessionFactory(rakNetSession -> {
-                    BedrockSession<ProxyPlayerSession> session = new BedrockSession<>(rakNetSession, Bedrock_v291.V291_CODEC);
+                    BedrockSession<ProxyPlayerSession> session = new BedrockSession<>(rakNetSession, Bedrock_v313.V313_CODEC);
                     session.setHandler(new DownstreamPacketHandler(session, this));
                     return session;
                 })

@@ -14,7 +14,7 @@ import com.nukkitx.protocol.bedrock.packet.LoginPacket;
 import com.nukkitx.protocol.bedrock.packet.PlayStatusPacket;
 import com.nukkitx.protocol.bedrock.session.BedrockSession;
 import com.nukkitx.protocol.bedrock.session.data.AuthData;
-import com.nukkitx.protocol.bedrock.v291.Bedrock_v291;
+import com.nukkitx.protocol.bedrock.v313.Bedrock_v313;
 import com.nukkitx.proxypass.ProxyPass;
 import com.nukkitx.proxypass.network.bedrock.util.EncryptionUtils;
 import io.netty.util.AsciiString;
@@ -75,7 +75,7 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
                 status.setStatus(PlayStatusPacket.Status.FAILED_CLIENT);
             }
         }
-        session.setPacketCodec(Bedrock_v291.V291_CODEC);
+        session.setPacketCodec(Bedrock_v313.V313_CODEC);
 
         JsonNode certData;
         try {
