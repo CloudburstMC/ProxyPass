@@ -31,7 +31,9 @@ public class ProxyPlayerSession implements PlayerSession {
     private static final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
     private final BedrockSession<ProxyPlayerSession> upstream;
     private final BedrockSession<ProxyPlayerSession> downstream;
-    private final Path loggingPath;
+    private final Path dataPath;
+    private final Path logPath;
+    private final long timestamp = System.currentTimeMillis();
     private final ProxyPass proxy;
     @Getter(AccessLevel.PACKAGE)
     private final KeyPair proxyKeyPair = EncryptionUtils.createKeyPair();
@@ -41,7 +43,13 @@ public class ProxyPlayerSession implements PlayerSession {
         this.upstream = upstream;
         this.downstream = downstream;
         this.proxy = proxy;
-        this.loggingPath = proxy.getLoggingDir().resolve(upstream.getAuthData().getDisplayName() + '-' + System.currentTimeMillis() + ".log");
+        this.dataPath = proxy.getSessionsDir().resolve(upstream.getAuthData().getDisplayName() + '-' + timestamp);
+        this.logPath = dataPath.resolve("packets.log");
+        try {
+            Files.createDirectories(dataPath);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
         if (proxy.getConfiguration().isLoggingPackets()) {
             executor.scheduleAtFixedRate(this::flushLogBuffer, 5, 5, TimeUnit.SECONDS);
         }
@@ -87,7 +95,7 @@ public class ProxyPlayerSession implements PlayerSession {
     private void flushLogBuffer() {
         synchronized (logBuffer) {
             try {
-                Files.write(loggingPath, logBuffer, StandardOpenOption.APPEND, StandardOpenOption.CREATE);
+                Files.write(logPath, logBuffer, StandardOpenOption.APPEND, StandardOpenOption.CREATE);
                 logBuffer.clear();
             } catch (IOException e) {
                 log.error("Unable to flush packet log", e);

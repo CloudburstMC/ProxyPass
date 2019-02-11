@@ -1,13 +1,15 @@
 package com.nukkitx.proxypass.network.bedrock.session;
 
 import com.nimbusds.jwt.SignedJWT;
+import com.nukkitx.nbt.stream.NBTOutputStream;
+import com.nukkitx.nbt.stream.NetworkDataOutputStream;
 import com.nukkitx.protocol.bedrock.handler.BedrockPacketHandler;
-import com.nukkitx.protocol.bedrock.packet.ClientToServerHandshakePacket;
-import com.nukkitx.protocol.bedrock.packet.ServerToClientHandshakePacket;
+import com.nukkitx.protocol.bedrock.packet.*;
 import com.nukkitx.protocol.bedrock.session.BedrockSession;
 import com.nukkitx.proxypass.ProxyPass;
 import com.nukkitx.proxypass.network.bedrock.util.EncryptionUtils;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.log4j.Log4j2;
 
 import javax.crypto.spec.SecretKeySpec;
 import java.net.URI;
@@ -18,6 +20,7 @@ import java.security.spec.InvalidKeySpecException;
 import java.text.ParseException;
 import java.util.Base64;
 
+@Log4j2
 @RequiredArgsConstructor
 public class DownstreamPacketHandler implements BedrockPacketHandler {
     private final BedrockSession<ProxyPlayerSession> session;
@@ -38,5 +41,15 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
         ClientToServerHandshakePacket clientToServerHandshake = new ClientToServerHandshakePacket();
         session.sendPacketImmediately(clientToServerHandshake);
         return true;
+    }
+
+    public boolean handle(AvailableEntityIdentifiersPacket packet) {
+        proxy.saveData("entity_identifiers", packet.getTag());
+        return false;
+    }
+
+    public boolean handle(BiomeDefinitionListPacket packet) {
+        proxy.saveData("biome_definitions", packet.getTag());
+        return false;
     }
 }

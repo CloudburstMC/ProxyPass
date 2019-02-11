@@ -14,7 +14,7 @@ import com.nukkitx.protocol.bedrock.packet.LoginPacket;
 import com.nukkitx.protocol.bedrock.packet.PlayStatusPacket;
 import com.nukkitx.protocol.bedrock.session.BedrockSession;
 import com.nukkitx.protocol.bedrock.session.data.AuthData;
-import com.nukkitx.protocol.bedrock.v313.Bedrock_v313;
+import com.nukkitx.protocol.bedrock.v332.Bedrock_v332;
 import com.nukkitx.proxypass.ProxyPass;
 import com.nukkitx.proxypass.network.bedrock.util.EncryptionUtils;
 import io.netty.util.AsciiString;
@@ -22,13 +22,29 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import net.minidev.json.JSONObject;
 
+import javax.imageio.ImageIO;
+import java.awt.*;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.security.interfaces.ECPublicKey;
+import java.util.Base64;
 import java.util.UUID;
 
 @Log4j2
 @RequiredArgsConstructor
 public class UpstreamPacketHandler implements BedrockPacketHandler {
+
+    private static final int PIXEL_SIZE = 4;
+
+    public static final int SINGLE_SKIN_SIZE = 64 * 32 * PIXEL_SIZE;
+    public static final int DOUBLE_SKIN_SIZE = 64 * 64 * PIXEL_SIZE;
+    public static final int SKIN_128_64_SIZE = 128 * 64 * PIXEL_SIZE;
+    public static final int SKIN_128_128_SIZE = 128 * 128 * PIXEL_SIZE;
 
     private final BedrockSession<ProxyPlayerSession> session;
     private final ProxyPass proxy;
@@ -75,7 +91,7 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
                 status.setStatus(PlayStatusPacket.Status.FAILED_CLIENT);
             }
         }
-        session.setPacketCodec(Bedrock_v313.V313_CODEC);
+        session.setPacketCodec(Bedrock_v332.V332_CODEC);
 
         JsonNode certData;
         try {
@@ -130,6 +146,8 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
             verifyJwt(clientJwt, identityPublicKey);
             skinData = clientJwt.getPayload().toJSONObject();
 
+            //saveSkin();
+
             initializeProxySession();
         } catch (Exception e) {
             session.disconnect("disconnectionScreen.internalError.cantConnect");
@@ -179,5 +197,37 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
 
             log.debug("Downstream connected");
         });
+    }
+
+    private void saveSkin() {
+        byte[] skin = Base64.getDecoder().decode(skinData.getAsString("SkinData"));
+        BufferedImage image = null;
+        if (skin.length == SINGLE_SKIN_SIZE) {
+            image = new BufferedImage(64, 32, BufferedImage.TYPE_4BYTE_ABGR);
+        } else if (skin.length == DOUBLE_SKIN_SIZE) {
+            image = new BufferedImage(64, 64, BufferedImage.TYPE_4BYTE_ABGR);
+        } else if (skin.length == SKIN_128_64_SIZE) {
+            image = new BufferedImage(128, 64, BufferedImage.TYPE_4BYTE_ABGR);
+        } else if (skin.length == SKIN_128_128_SIZE) {
+            image = new BufferedImage(128, 128, BufferedImage.TYPE_4BYTE_ABGR);
+        } else {
+            throw new IllegalStateException("Invalid skin");
+        }
+        ByteArrayInputStream data = new ByteArrayInputStream(skin);
+
+        for (int y = 0; y < image.getHeight(); y++) {
+            for (int x = 0; x < image.getWidth(); x++) {
+                Color color = new Color(data.read(), data.read(), data.read(), data.read());
+                image.setRGB(x, y, color.getRGB());
+            }
+        }
+
+        Path path = session.getPlayer().getDataPath().resolve("skin.png");
+        try {
+            OutputStream stream = Files.newOutputStream(path, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+            ImageIO.write(image, "png", stream);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 }
