@@ -87,8 +87,8 @@ public class ProxyPass {
         Files.createDirectories(dataDir);
 
         log.info("Loading server...");
-        rakNetServer = RakNetServer.<BedrockSession<ProxyPlayerSession>>builder()
-                .eventListener(new ProxyRakNetEventListener())
+        RakNetServer.Builder<BedrockSession<ProxyPlayerSession>> builder = RakNetServer.builder();
+                builder.eventListener(new ProxyRakNetEventListener())
                 .address(proxyAddress)
                 .packet(WrappedPacket::new, 0xfe)
                 .sessionManager(sessionManager)
@@ -96,8 +96,8 @@ public class ProxyPass {
                     BedrockSession<ProxyPlayerSession> session = new BedrockSession<>(rakNetSession);
                     session.setHandler(new UpstreamPacketHandler(session, this));
                     return session;
-                })
-                .build();
+                });
+        rakNetServer = builder.build();
         if (rakNetServer.bind()) {
             log.info("RakNet server started on {}", proxyAddress);
         } else {
@@ -116,7 +116,7 @@ public class ProxyPass {
         loop();
     }
 
-    public void loop() {
+    private void loop() {
         Lock lock = new ReentrantLock();
 
         while (running.get()) {

@@ -1,5 +1,6 @@
 package com.nukkitx.proxypass.network.bedrock.session;
 
+import com.nukkitx.network.util.DisconnectReason;
 import com.nukkitx.protocol.PlayerSession;
 import com.nukkitx.protocol.bedrock.BedrockPacket;
 import com.nukkitx.protocol.bedrock.handler.TailHandler;
@@ -13,6 +14,7 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -38,6 +40,7 @@ public class ProxyPlayerSession implements PlayerSession {
     @Getter(AccessLevel.PACKAGE)
     private final KeyPair proxyKeyPair = EncryptionUtils.createKeyPair();
     private final Deque<String> logBuffer = new ArrayDeque<>();
+    private volatile boolean closed = false;
 
     public ProxyPlayerSession(BedrockSession<ProxyPlayerSession> upstream, BedrockSession<ProxyPlayerSession> downstream, ProxyPass proxy) {
         this.upstream = upstream;
@@ -56,16 +59,22 @@ public class ProxyPlayerSession implements PlayerSession {
     }
 
     @Override
+    public boolean isClosed() {
+        return closed;
+    }
+
+    @Override
     public void close() {
+        closed = true;
+    }
+
+    @Override
+    public void onDisconnect(@Nonnull DisconnectReason reason) {
+
     }
 
     @Override
     public void onDisconnect(@Nullable String s) {
-    }
-
-    @Override
-    public void onTimeout() {
-
     }
 
     public TailHandler getUpstreamTailHandler() {
