@@ -1,5 +1,7 @@
 package com.nukkitx.proxypass;
 
+import com.fasterxml.jackson.core.util.DefaultIndenter;
+import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
@@ -8,8 +10,9 @@ import com.nukkitx.nbt.stream.NetworkDataOutputStream;
 import com.nukkitx.nbt.tag.Tag;
 import com.nukkitx.network.raknet.RakNetClient;
 import com.nukkitx.network.raknet.RakNetServer;
+import com.nukkitx.protocol.bedrock.BedrockPacketCodec;
 import com.nukkitx.protocol.bedrock.session.BedrockSession;
-import com.nukkitx.protocol.bedrock.v332.Bedrock_v332;
+import com.nukkitx.protocol.bedrock.v340.Bedrock_v340;
 import com.nukkitx.protocol.bedrock.wrapper.WrappedPacket;
 import com.nukkitx.proxypass.network.NukkitSessionManager;
 import com.nukkitx.proxypass.network.ProxyRakNetEventListener;
@@ -34,9 +37,14 @@ public class ProxyPass {
     public static final ObjectMapper JSON_MAPPER = new ObjectMapper().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
     public static final YAMLMapper YAML_MAPPER = (YAMLMapper) new YAMLMapper().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
     public static final String MINECRAFT_VERSION;
-    public static final int PROTOCOL_VERSION = Bedrock_v332.V332_CODEC.getProtocolVersion();
+    public static final BedrockPacketCodec CODEC = Bedrock_v340.V340_CODEC;
+    public static final int PROTOCOL_VERSION = CODEC.getProtocolVersion();
+    private static final DefaultPrettyPrinter PRETTY_PRINTER = new DefaultPrettyPrinter();
 
     static {
+        DefaultIndenter indenter = new DefaultIndenter("    ", "\n");
+        PRETTY_PRINTER.indentArraysWith(indenter);
+        PRETTY_PRINTER.indentObjectsWith(indenter);
         String minecraftVersion;
 
         Package mainPackage = ProxyPass.class.getPackage();
@@ -106,7 +114,7 @@ public class ProxyPass {
         rakNetClient = new RakNetClient.Builder<BedrockSession<ProxyPlayerSession>>()
                 .packet(WrappedPacket::new, 0xfe)
                 .sessionFactory(rakNetSession -> {
-                    BedrockSession<ProxyPlayerSession> session = new BedrockSession<>(rakNetSession, Bedrock_v332.V332_CODEC);
+                    BedrockSession<ProxyPlayerSession> session = new BedrockSession<>(rakNetSession, CODEC);
                     session.setHandler(new DownstreamPacketHandler(session, this));
                     return session;
                 })
@@ -141,6 +149,16 @@ public class ProxyPass {
         try (OutputStream outputStream = Files.newOutputStream(path, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)){
             NBTOutputStream nbtOutputStream = new NBTOutputStream(new NetworkDataOutputStream(outputStream));
             nbtOutputStream.write(dataTag);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public void saveObject(String name, Object object) {
+        Path outPath = dataDir.resolve(name);
+        try {
+            OutputStream outputStream = Files.newOutputStream(outPath, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE);
+            ProxyPass.JSON_MAPPER.writer(PRETTY_PRINTER).writeValue(outputStream, object);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
