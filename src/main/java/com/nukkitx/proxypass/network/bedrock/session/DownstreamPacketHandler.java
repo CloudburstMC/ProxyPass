@@ -21,6 +21,7 @@ import lombok.Value;
 import lombok.extern.log4j.Log4j2;
 
 import javax.annotation.Nonnull;
+import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -47,9 +48,9 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
             SignedJWT saltJwt = SignedJWT.parse(packet.getJwt());
             URI x5u = saltJwt.getHeader().getX509CertURL();
             ECPublicKey serverKey = EncryptionUtils.generateKey(x5u.toASCIIString());
-            byte[] encryptionKey = EncryptionUtils.getServerKey(session.getPlayer().getProxyKeyPair(), serverKey,
+            SecretKey key = EncryptionUtils.getServerKey(session.getPlayer().getProxyKeyPair(), serverKey,
                     Base64.getDecoder().decode(saltJwt.getJWTClaimsSet().getStringClaim("salt")));
-            session.enableEncryption(new SecretKeySpec(encryptionKey, "AES"));
+            session.enableEncryption(key);
         } catch (ParseException | NoSuchAlgorithmException | InvalidKeySpecException | InvalidKeyException e) {
             throw new RuntimeException(e);
         }
@@ -92,6 +93,11 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
         proxy.saveObject("runtimeid_table.json", table);
 
         return false;
+    }
+
+    @Override
+    public boolean handle(DisconnectPacket packet) {
+        return packet.getKickMessage().equals("disconnectionScreen.notAuthenticated");
     }
 
     @Override

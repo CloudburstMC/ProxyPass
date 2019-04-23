@@ -9,6 +9,7 @@ import lombok.experimental.UtilityClass;
 import net.minidev.json.JSONObject;
 
 import javax.crypto.KeyAgreement;
+import javax.crypto.SecretKey;
 import java.net.URI;
 import java.security.*;
 import java.security.interfaces.ECPrivateKey;
@@ -22,27 +23,14 @@ import java.util.concurrent.TimeUnit;
 
 @UtilityClass
 public class EncryptionUtils {
-    public static final ECPublicKey MOJANG_PUBLIC_KEY;
-    private static final String MOJANG_PUBLIC_KEY_BASE64 =
-            "MHYwEAYHKoZIzj0CAQYFK4EEACIDYgAE8ELkixyLcwlZryUQcu1TvPOmI2B7vX83ndnWRUaXm74wFfa5f/lwQNTfrLVHa2PmenpGI6JhIMUJaWZrjmMj90NoKNFSNBuKdm8rYiXsfaz3K36x/1U26HpG0ZxK/V1V";
-    private static final KeyPairGenerator KEY_PAIR_GEN;
-
-    static {
-        try {
-            KEY_PAIR_GEN = KeyPairGenerator.getInstance("EC");
-            KEY_PAIR_GEN.initialize(new ECGenParameterSpec("secp384r1"));
-            MOJANG_PUBLIC_KEY = generateKey(MOJANG_PUBLIC_KEY_BASE64);
-        } catch (NoSuchAlgorithmException | InvalidAlgorithmParameterException | InvalidKeySpecException e) {
-            throw new AssertionError("Unable to initialize required encryption");
-        }
-    }
+    public static final ECPublicKey MOJANG_PUBLIC_KEY = com.nukkitx.protocol.bedrock.util.EncryptionUtils.getMojangPublicKey();
 
     public static ECPublicKey generateKey(String b64) throws NoSuchAlgorithmException, InvalidKeySpecException {
-        return (ECPublicKey) KeyFactory.getInstance("EC").generatePublic(new X509EncodedKeySpec(Base64.getDecoder().decode(b64)));
+        return com.nukkitx.protocol.bedrock.util.EncryptionUtils.generateKey(b64);
     }
 
     public static KeyPair createKeyPair() {
-        return KEY_PAIR_GEN.generateKeyPair();
+        return com.nukkitx.protocol.bedrock.util.EncryptionUtils.createKeyPair();
     }
 
     public static SignedJWT forgeAuthData(KeyPair pair, JSONObject extraData) {
@@ -86,38 +74,13 @@ public class EncryptionUtils {
 
     private static void signJwt(JWSObject jwt, ECPrivateKey privateKey) {
         try {
-            JWSSigner signer = new ECDSASigner(privateKey, ECKey.Curve.P_384);
-            jwt.sign(signer);
+            com.nukkitx.protocol.bedrock.util.EncryptionUtils.signJwt(jwt, privateKey);
         } catch (JOSEException e) {
             throw new RuntimeException("Unable to sign JWT", e);
         }
     }
 
-    public static byte[] getServerKey(KeyPair proxyKeyPair, PublicKey serverKey, byte[] token) throws InvalidKeyException {
-        byte[] sharedSecret = getSharedSecret(proxyKeyPair.getPrivate(), serverKey);
-
-        MessageDigest digest;
-        try {
-            digest = MessageDigest.getInstance("SHA-256");
-        } catch (NoSuchAlgorithmException e) {
-            throw new AssertionError(e);
-        }
-
-        digest.update(token);
-        digest.update(sharedSecret);
-        return digest.digest();
-    }
-
-    private static byte[] getSharedSecret(PrivateKey proxyKey, PublicKey serverKey) throws InvalidKeyException {
-        KeyAgreement agreement;
-        try {
-            agreement = KeyAgreement.getInstance("ECDH");
-        } catch (NoSuchAlgorithmException e) {
-            throw new AssertionError(e);
-        }
-
-        agreement.init(proxyKey);
-        agreement.doPhase(serverKey, true);
-        return agreement.generateSecret();
+    public static SecretKey getServerKey(KeyPair proxyKeyPair, PublicKey serverKey, byte[] token) throws InvalidKeyException {
+        return com.nukkitx.protocol.bedrock.util.EncryptionUtils.getSecretKey(proxyKeyPair.getPrivate(), serverKey, token);
     }
 }
