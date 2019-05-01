@@ -5,6 +5,7 @@ import com.nimbusds.jose.crypto.ECDSASigner;
 import com.nimbusds.jose.jwk.ECKey;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
+import com.nukkitx.protocol.bedrock.util.EncryptionUtils;
 import lombok.experimental.UtilityClass;
 import net.minidev.json.JSONObject;
 
@@ -22,16 +23,7 @@ import java.util.Date;
 import java.util.concurrent.TimeUnit;
 
 @UtilityClass
-public class EncryptionUtils {
-    public static final ECPublicKey MOJANG_PUBLIC_KEY = com.nukkitx.protocol.bedrock.util.EncryptionUtils.getMojangPublicKey();
-
-    public static ECPublicKey generateKey(String b64) throws NoSuchAlgorithmException, InvalidKeySpecException {
-        return com.nukkitx.protocol.bedrock.util.EncryptionUtils.generateKey(b64);
-    }
-
-    public static KeyPair createKeyPair() {
-        return com.nukkitx.protocol.bedrock.util.EncryptionUtils.createKeyPair();
-    }
+public class ForgeryUtils {
 
     public static SignedJWT forgeAuthData(KeyPair pair, JSONObject extraData) {
         String publicKeyBase64 = Base64.getEncoder().encodeToString(pair.getPublic().getEncoded());
@@ -55,7 +47,11 @@ public class EncryptionUtils {
 
         SignedJWT jwt = new SignedJWT(header, claimsSet);
 
-        signJwt(jwt, (ECPrivateKey) pair.getPrivate());
+        try {
+            EncryptionUtils.signJwt(jwt, (ECPrivateKey) pair.getPrivate());
+        } catch (JOSEException e) {
+            throw new RuntimeException(e);
+        }
 
         return jwt;
     }
@@ -67,20 +63,12 @@ public class EncryptionUtils {
 
         JWSObject jws = new JWSObject(header, new Payload(skinData));
 
-        signJwt(jws, (ECPrivateKey) pair.getPrivate());
+        try {
+            EncryptionUtils.signJwt(jws, (ECPrivateKey) pair.getPrivate());
+        } catch (JOSEException e) {
+            throw new RuntimeException(e);
+        }
 
         return jws;
-    }
-
-    private static void signJwt(JWSObject jwt, ECPrivateKey privateKey) {
-        try {
-            com.nukkitx.protocol.bedrock.util.EncryptionUtils.signJwt(jwt, privateKey);
-        } catch (JOSEException e) {
-            throw new RuntimeException("Unable to sign JWT", e);
-        }
-    }
-
-    public static SecretKey getServerKey(KeyPair proxyKeyPair, PublicKey serverKey, byte[] token) throws InvalidKeyException {
-        return com.nukkitx.protocol.bedrock.util.EncryptionUtils.getSecretKey(proxyKeyPair.getPrivate(), serverKey, token);
     }
 }

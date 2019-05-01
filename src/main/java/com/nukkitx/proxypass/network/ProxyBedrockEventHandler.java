@@ -1,27 +1,48 @@
 package com.nukkitx.proxypass.network;
 
-import com.nukkitx.network.raknet.RakNetServerEventListener;
+import com.nukkitx.protocol.bedrock.BedrockPong;
+import com.nukkitx.protocol.bedrock.BedrockServerEventHandler;
+import com.nukkitx.protocol.bedrock.BedrockServerSession;
 import com.nukkitx.proxypass.ProxyPass;
+import com.nukkitx.proxypass.network.bedrock.session.UpstreamPacketHandler;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 
 import javax.annotation.Nonnull;
+import javax.annotation.ParametersAreNonnullByDefault;
 import java.net.InetSocketAddress;
 
 @Log4j2
-public class ProxyRakNetEventListener implements RakNetServerEventListener {
-    private final Advertisement advertisement = new Advertisement("MCPE", "ProxyPass",
-            ProxyPass.PROTOCOL_VERSION, ProxyPass.MINECRAFT_VERSION, 0,
-            1, "https://github.com/NukkitX/ProxyPass", "SMP");
+@RequiredArgsConstructor
+@ParametersAreNonnullByDefault
+public class ProxyBedrockEventHandler implements BedrockServerEventHandler {
+    private static final BedrockPong ADVERTISEMENT = new BedrockPong();
 
-    @Nonnull
+    private final ProxyPass proxy;
+
+    static {
+        ADVERTISEMENT.setEdition("MCPE");
+        ADVERTISEMENT.setGameType("Survival");
+        ADVERTISEMENT.setVersion(ProxyPass.MINECRAFT_VERSION);
+        ADVERTISEMENT.setProtocolVersion(ProxyPass.PROTOCOL_VERSION);
+        ADVERTISEMENT.setMotd("ProxyPass");
+        ADVERTISEMENT.setPlayerCount(0);
+        ADVERTISEMENT.setMaximumPlayerCount(20);
+        ADVERTISEMENT.setSubMotd("https://github.com/NukkitX/ProxyPass");
+    }
+
     @Override
-    public Action onConnectionRequest(InetSocketAddress address, int protocolVersion) {
-        log.trace("RakNet version: {}", protocolVersion);
-        return Action.CONTINUE;
+    public boolean onConnectionRequest(InetSocketAddress address) {
+        return true;
     }
 
     @Nonnull
-    public Advertisement onQuery(InetSocketAddress address) {
-        return advertisement;
+    public BedrockPong onQuery(InetSocketAddress address) {
+        return ADVERTISEMENT;
+    }
+
+    @Override
+    public void onSessionCreation(BedrockServerSession session) {
+        session.setPacketHandler(new UpstreamPacketHandler(session, this.proxy));
     }
 }

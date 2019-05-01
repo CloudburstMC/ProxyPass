@@ -8,17 +8,11 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
 import com.nukkitx.nbt.stream.NBTOutputStream;
 import com.nukkitx.nbt.stream.NetworkDataOutputStream;
 import com.nukkitx.nbt.tag.Tag;
-import com.nukkitx.network.raknet.RakNetClient;
-import com.nukkitx.network.raknet.RakNetServer;
+import com.nukkitx.protocol.bedrock.BedrockClient;
 import com.nukkitx.protocol.bedrock.BedrockPacketCodec;
-import com.nukkitx.protocol.bedrock.session.BedrockSession;
+import com.nukkitx.protocol.bedrock.BedrockServer;
 import com.nukkitx.protocol.bedrock.v354.Bedrock_v354;
-import com.nukkitx.protocol.bedrock.wrapper.WrappedPacket;
-import com.nukkitx.proxypass.network.NukkitSessionManager;
-import com.nukkitx.proxypass.network.ProxyRakNetEventListener;
-import com.nukkitx.proxypass.network.bedrock.session.DownstreamPacketHandler;
-import com.nukkitx.proxypass.network.bedrock.session.ProxyPlayerSession;
-import com.nukkitx.proxypass.network.bedrock.session.UpstreamPacketHandler;
+import com.nukkitx.proxypass.network.ProxyBedrockEventHandler;
 import lombok.Getter;
 import lombok.extern.log4j.Log4j2;
 
@@ -26,7 +20,10 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.file.*;
-import java.util.concurrent.TimeUnit;
+import java.util.Collections;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -57,9 +54,8 @@ public class ProxyPass {
     }
 
     private final AtomicBoolean running = new AtomicBoolean(true);
-    private NukkitSessionManager sessionManager = new NukkitSessionManager();
-    private RakNetServer<BedrockSession<ProxyPlayerSession>> rakNetServer;
-    private RakNetClient<BedrockSession<ProxyPlayerSession>> rakNetClient;
+    private BedrockServer bedrockServer;
+    private final Set<BedrockClient> clients = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private InetSocketAddress targetAddress;
     private InetSocketAddress proxyAddress;
     private Configuration configuration;
@@ -95,23 +91,12 @@ public class ProxyPass {
         Files.createDirectories(dataDir);
 
         log.info("Loading server...");
-        RakNetServer.Builder<BedrockSession<ProxyPlayerSession>> builder = RakNetServer.builder();
-                builder.eventListener(new ProxyRakNetEventListener())
-                .address(proxyAddress)
-                .packet(WrappedPacket::new, 0xfe)
-                .sessionManager(sessionManager)
-                .sessionFactory(rakNetSession -> {
-                    BedrockSession<ProxyPlayerSession> session = new BedrockSession<>(rakNetSession);
-                    session.setHandler(new UpstreamPacketHandler(session, this));
-                    return session;
-                });
-        rakNetServer = builder.build();
-        if (rakNetServer.bind()) {
-            log.info("RakNet server started on {}", proxyAddress);
-        } else {
-            log.fatal("RakNet server was not able to bind to {}", proxyAddress);
-        }
-        rakNetClient = new RakNetClient.Builder<BedrockSession<ProxyPlayerSession>>()
+        this.bedrockServer = new BedrockServer(this.proxyAddress);
+        this.bedrockServer.setHandler(new ProxyBedrockEventHandler(this));
+        this.bedrockServer.bind().join();
+        log.info("RakNet server started on {}", proxyAddress);
+
+        /*rakNetClient = new RakNetClient.Builder<BedrockSession<ProxyPlayerSession>>()
                 .packet(WrappedPacket::new, 0xfe)
                 .sessionFactory(rakNetSession -> {
                     BedrockSession<ProxyPlayerSession> session = new BedrockSession<>(rakNetSession, CODEC);
@@ -120,28 +105,41 @@ public class ProxyPass {
                 })
                 .sessionManager(sessionManager)
                 .build();
-        log.info("RakNet client ready for connections to {}", targetAddress);
+        log.info("RakNet client ready for connections to {}", targetAddress);*/
         loop();
     }
 
-    private void loop() {
-        Lock lock = new ReentrantLock();
+    public BedrockClient newClient() {
+        InetSocketAddress bindAddress = new InetSocketAddress("0.0.0.0", ThreadLocalRandom.current().nextInt(20000, 60000));
+        BedrockClient client = new BedrockClient(bindAddress);
+        this.clients.add(client);
+        client.bind().join();
+        return client;
+    }
 
+    private void loop() {
         while (running.get()) {
-            lock.lock();
             try {
-                lock.newCondition().await(50, TimeUnit.MILLISECONDS);
+                synchronized (this) {
+                    this.wait();
+                }
             } catch (InterruptedException e) {
-                //Ignore
+                // ignore
             }
-            lock.unlock();
+
         }
+
+        // Shutdown
+        this.clients.forEach(BedrockClient::close);
+        this.bedrockServer.close();
     }
 
     public void shutdown() {
-        running.compareAndSet(false, true);
-        rakNetClient.close();
-        rakNetServer.close();
+        if (running.compareAndSet(false, true)) {
+            synchronized (this) {
+                this.notify();
+            }
+        }
     }
 
     public void saveData(String dataName, Tag<?> dataTag) {

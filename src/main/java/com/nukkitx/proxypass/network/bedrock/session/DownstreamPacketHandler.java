@@ -1,7 +1,5 @@
 package com.nukkitx.proxypass.network.bedrock.session;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -9,27 +7,25 @@ import com.nimbusds.jwt.SignedJWT;
 import com.nukkitx.nbt.stream.LittleEndianDataOutputStream;
 import com.nukkitx.nbt.stream.NBTOutputStream;
 import com.nukkitx.nbt.tag.CompoundTag;
+import com.nukkitx.protocol.bedrock.BedrockClientSession;
 import com.nukkitx.protocol.bedrock.data.ContainerId;
 import com.nukkitx.protocol.bedrock.data.ItemData;
 import com.nukkitx.protocol.bedrock.handler.BedrockPacketHandler;
 import com.nukkitx.protocol.bedrock.packet.*;
-import com.nukkitx.protocol.bedrock.session.BedrockSession;
+import com.nukkitx.protocol.bedrock.util.EncryptionUtils;
 import com.nukkitx.proxypass.ProxyPass;
-import com.nukkitx.proxypass.network.bedrock.util.EncryptionUtils;
+import com.nukkitx.proxypass.network.bedrock.util.ForgeryUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
 import lombok.extern.log4j.Log4j2;
 
 import javax.annotation.Nonnull;
 import javax.crypto.SecretKey;
-import javax.crypto.spec.SecretKeySpec;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.interfaces.ECPublicKey;
@@ -40,7 +36,8 @@ import java.util.*;
 @Log4j2
 @RequiredArgsConstructor
 public class DownstreamPacketHandler implements BedrockPacketHandler {
-    private final BedrockSession<ProxyPlayerSession> session;
+    private final BedrockClientSession session;
+    private final ProxyPlayerSession player;
     private final ProxyPass proxy;
 
     public boolean handle(ServerToClientHandshakePacket packet) {
@@ -48,7 +45,7 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
             SignedJWT saltJwt = SignedJWT.parse(packet.getJwt());
             URI x5u = saltJwt.getHeader().getX509CertURL();
             ECPublicKey serverKey = EncryptionUtils.generateKey(x5u.toASCIIString());
-            SecretKey key = EncryptionUtils.getServerKey(session.getPlayer().getProxyKeyPair(), serverKey,
+            SecretKey key = EncryptionUtils.getSecretKey(this.player.getProxyKeyPair().getPrivate(), serverKey,
                     Base64.getDecoder().decode(saltJwt.getJWTClaimsSet().getStringClaim("salt")));
             session.enableEncryption(key);
         } catch (ParseException | NoSuchAlgorithmException | InvalidKeySpecException | InvalidKeyException e) {
@@ -97,7 +94,9 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
 
     @Override
     public boolean handle(DisconnectPacket packet) {
-        return packet.getKickMessage().equals("disconnectionScreen.notAuthenticated");
+        this.session.disconnect();
+        // Let the client see the reason too.
+        return false;
     }
 
     @Override
