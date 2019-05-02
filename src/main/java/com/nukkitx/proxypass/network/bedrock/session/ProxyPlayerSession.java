@@ -10,11 +10,9 @@ import com.nukkitx.protocol.bedrock.handler.BedrockPacketHandler;
 import com.nukkitx.protocol.bedrock.packet.NetworkStackLatencyPacket;
 import com.nukkitx.protocol.bedrock.util.EncryptionUtils;
 import com.nukkitx.proxypass.ProxyPass;
-import com.nukkitx.proxypass.network.bedrock.util.ForgeryUtils;
 import io.netty.buffer.ByteBuf;
 import lombok.AccessLevel;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 
 import java.io.IOException;
@@ -22,9 +20,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.security.KeyPair;
-import java.util.ArrayDeque;
-import java.util.Collection;
-import java.util.Deque;
+import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -107,6 +103,7 @@ public class ProxyPlayerSession {
         @Override
         public void handle(BedrockSession session, ByteBuf compressed, Collection<BedrockPacket> packets) {
             boolean wrapperHandled = !ProxyPlayerSession.this.proxy.getConfiguration().isPassingThrough();
+            List<BedrockPacket> unhandled = new ArrayList<>();
             for (BedrockPacket packet : packets) {
                 if (session.isLogging() && log.isTraceEnabled() && !(packet instanceof NetworkStackLatencyPacket)) {
                     log.trace("Inbound {}: {}", session.getAddress(), packet);
@@ -117,14 +114,16 @@ public class ProxyPlayerSession {
 
                 if (handler != null && packet.handle(handler)) {
                     wrapperHandled = true;
-                } else if (wrapperHandled) {
-                    this.session.sendPacketImmediately(packet);
+                } else {
+                    unhandled.add(packet);
                 }
             }
 
             if (!wrapperHandled) {
                 compressed.resetReaderIndex();
                 this.session.sendWrapped(compressed, true);
+            } else if (!unhandled.isEmpty()) {
+                this.session.sendWrapped(unhandled, true);
             }
         }
     }
