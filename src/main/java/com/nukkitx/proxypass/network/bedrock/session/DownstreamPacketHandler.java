@@ -3,14 +3,11 @@ package com.nukkitx.proxypass.network.bedrock.session;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.nimbusds.jwt.SignedJWT;
-import com.nukkitx.nbt.NbtUtils;
 import com.nukkitx.nbt.stream.LittleEndianDataOutputStream;
 import com.nukkitx.nbt.stream.NBTOutputStream;
 import com.nukkitx.nbt.tag.CompoundTag;
 import com.nukkitx.protocol.bedrock.BedrockClientSession;
 import com.nukkitx.protocol.bedrock.data.ContainerId;
-import com.nukkitx.protocol.bedrock.data.CraftingData;
-import com.nukkitx.protocol.bedrock.data.CraftingType;
 import com.nukkitx.protocol.bedrock.data.ItemData;
 import com.nukkitx.protocol.bedrock.handler.BedrockPacketHandler;
 import com.nukkitx.protocol.bedrock.packet.*;
@@ -67,20 +64,28 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
 
     public boolean handle(StartGamePacket packet) {
         List<RuntimeEntry> table = new ArrayList<>();
+        Map<String, Integer> legacyBlocks = new HashMap<>();
         for (StartGamePacket.BlockPaletteEntry entry : packet.getPaletteEntries()) {
             table.add(new RuntimeEntry(entry.getIdentifier(), entry.getLegacyId(), entry.getMeta()));
+            legacyBlocks.putIfAbsent(entry.getIdentifier(), (int) entry.getLegacyId());
         }
         table.sort(RuntimeEntry.COMPARATOR);
 
-        proxy.saveObject("runtimeid_table.json", table);
+        proxy.saveObject("legacy_block_ids.json", sortMap(legacyBlocks));
+        proxy.saveObject("runtime_block_states.json", table);
 
-        List<ItemDataEntry> itemData = new ArrayList<>();
+        List<DataEntry> itemData = new ArrayList<>();
+        LinkedHashMap<String, Integer> legacyItems = new LinkedHashMap<>();
 
         for (StartGamePacket.ItemEntry entry : packet.getItemEntries()) {
-            itemData.add(new ItemDataEntry(entry.getIdentifier(), entry.getId()));
+            itemData.add(new DataEntry(entry.getIdentifier(), entry.getId()));
+            if (entry.getId() > 255) {
+                legacyItems.putIfAbsent(entry.getIdentifier(), (int) entry.getId());
+            }
         }
 
-        proxy.saveObject("runtime_item_ids.json", itemData);
+        proxy.saveObject("legacy_item_ids.json", sortMap(legacyItems));
+        proxy.saveObject("runtime_item_states.json", itemData);
 
         return false;
     }
@@ -128,6 +133,17 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
         return false;
     }
 
+    private static Map<String, Integer> sortMap(Map<String, Integer> map) {
+        List<Map.Entry<String, Integer>> entries = new ArrayList<>(map.entrySet());
+        entries.sort(Comparator.comparing(Map.Entry::getValue));
+
+        Map<String, Integer> sortedMap = new LinkedHashMap<>();
+        for (Map.Entry<String, Integer> entry : entries) {
+            sortedMap.put(entry.getKey(), entry.getValue());
+        }
+        return sortedMap;
+    }
+
     @Value
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private static class CreativeItemEntry {
@@ -153,7 +169,7 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
     }
 
     @Value
-    private static class ItemDataEntry {
+    private static class DataEntry {
         private final String name;
         private final int id;
     }
