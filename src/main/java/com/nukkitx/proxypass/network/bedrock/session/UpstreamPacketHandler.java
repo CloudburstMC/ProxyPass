@@ -27,6 +27,7 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
@@ -131,8 +132,6 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
             verifyJwt(clientJwt, identityPublicKey);
             skinData = clientJwt.getPayload().toJSONObject();
 
-            //saveSkin();
-
             initializeProxySession();
         } catch (Exception e) {
             session.disconnect("disconnectionScreen.internalError.cantConnect");
@@ -175,24 +174,48 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
             downstream.setPacketHandler(new DownstreamPacketHandler(downstream, proxySession, this.proxy));
 
             log.debug("Downstream connected");
+
+            //saveSkin(proxySession);
         });
     }
 
     private void saveSkin(ProxyPlayerSession session) {
         byte[] skin = Base64.getDecoder().decode(skinData.getAsString("SkinData"));
-        BufferedImage image;
+        int width, height;
         if (skin.length == SINGLE_SKIN_SIZE) {
-            image = new BufferedImage(64, 32, BufferedImage.TYPE_4BYTE_ABGR);
+            width = 64;
+            height = 32;
         } else if (skin.length == DOUBLE_SKIN_SIZE) {
-            image = new BufferedImage(64, 64, BufferedImage.TYPE_4BYTE_ABGR);
+            width = 64;
+            height = 64;
         } else if (skin.length == SKIN_128_64_SIZE) {
-            image = new BufferedImage(128, 64, BufferedImage.TYPE_4BYTE_ABGR);
+            width = 128;
+            height = 64;
         } else if (skin.length == SKIN_128_128_SIZE) {
-            image = new BufferedImage(128, 128, BufferedImage.TYPE_4BYTE_ABGR);
+            width = 128;
+            height = 128;
         } else {
             throw new IllegalStateException("Invalid skin");
         }
-        ByteArrayInputStream data = new ByteArrayInputStream(skin);
+        saveSkin(session, width, height, skin, "skin");
+
+        byte[] cape = Base64.getDecoder().decode(skinData.getAsString("CapeData"));
+
+        saveSkin(session, 64, 32, cape, "cape");
+
+        Path geometryPath = session.getDataPath().resolve("geometry.json");
+        byte[] geometry = Base64.getDecoder().decode(skinData.getAsString("SkinGeometry"));
+        try {
+            Files.write(geometryPath, geometry, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+}
+    }
+
+    private static void saveSkin(ProxyPlayerSession session, int width, int height, byte[] bytes, String name) {
+        BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_4BYTE_ABGR);
+
+        ByteArrayInputStream data = new ByteArrayInputStream(bytes);
 
         for (int y = 0; y < image.getHeight(); y++) {
             for (int x = 0; x < image.getWidth(); x++) {
@@ -201,9 +224,8 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
             }
         }
 
-        Path path = session.getDataPath().resolve("skin.png");
-        try {
-            OutputStream stream = Files.newOutputStream(path, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+        Path path = session.getDataPath().resolve(name + ".png");
+        try (OutputStream stream = Files.newOutputStream(path, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)) {
             ImageIO.write(image, "png", stream);
         } catch (IOException e) {
             throw new RuntimeException(e);
