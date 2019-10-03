@@ -27,7 +27,6 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
@@ -197,11 +196,11 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
         } else {
             throw new IllegalStateException("Invalid skin");
         }
-        saveSkin(session, width, height, skin, "skin");
+        saveImage(session, width, height, skin, "skin");
 
         byte[] cape = Base64.getDecoder().decode(skinData.getAsString("CapeData"));
 
-        saveSkin(session, 64, 32, cape, "cape");
+        saveImage(session, 64, 32, cape, "cape");
 
         Path geometryPath = session.getDataPath().resolve("geometry.json");
         byte[] geometry = Base64.getDecoder().decode(skinData.getAsString("SkinGeometry"));
@@ -212,7 +211,7 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
 }
     }
 
-    private static void saveSkin(ProxyPlayerSession session, int width, int height, byte[] bytes, String name) {
+    private static void saveImage(ProxyPlayerSession session, int width, int height, byte[] bytes, String name) {
         BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_4BYTE_ABGR);
 
         ByteArrayInputStream data = new ByteArrayInputStream(bytes);
