@@ -9,8 +9,10 @@ import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSObject;
 import com.nimbusds.jose.crypto.factories.DefaultJWSVerifierFactory;
 import com.nimbusds.jwt.SignedJWT;
+import com.nukkitx.math.vector.Vector3i;
 import com.nukkitx.protocol.bedrock.BedrockServerSession;
 import com.nukkitx.protocol.bedrock.handler.BedrockPacketHandler;
+import com.nukkitx.protocol.bedrock.packet.CommandRequestPacket;
 import com.nukkitx.protocol.bedrock.packet.LoginPacket;
 import com.nukkitx.protocol.bedrock.packet.PlayStatusPacket;
 import com.nukkitx.protocol.bedrock.util.EncryptionUtils;
@@ -21,15 +23,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import net.minidev.json.JSONObject;
 
-import javax.imageio.ImageIO;
-import java.awt.*;
-import java.awt.image.BufferedImage;
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
+
 import java.security.interfaces.ECPublicKey;
 import java.util.Base64;
 import java.util.UUID;
@@ -38,19 +33,13 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class UpstreamPacketHandler implements BedrockPacketHandler {
 
-    private static final int PIXEL_SIZE = 4;
-
-    public static final int SINGLE_SKIN_SIZE = 64 * 32 * PIXEL_SIZE;
-    public static final int DOUBLE_SKIN_SIZE = 64 * 64 * PIXEL_SIZE;
-    public static final int SKIN_128_64_SIZE = 128 * 64 * PIXEL_SIZE;
-    public static final int SKIN_128_128_SIZE = 128 * 128 * PIXEL_SIZE;
-
     private final BedrockServerSession session;
     private final ProxyPass proxy;
     private JSONObject skinData;
     private JSONObject extraData;
     private ArrayNode chainData;
     private AuthData authData;
+    private ProxyPlayerSession player;
 
     private static boolean validateChainData(JsonNode data) throws Exception {
         ECPublicKey lastKey = null;
@@ -148,6 +137,7 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
             }
             downstream.setPacketCodec(ProxyPass.CODEC);
             ProxyPlayerSession proxySession = new ProxyPlayerSession(this.session, downstream, this.proxy, this.authData);
+            this.player = proxySession;
 
             SignedJWT authData = ForgeryUtils.forgeAuthData(proxySession.getProxyKeyPair(), extraData);
             JWSObject skinData = ForgeryUtils.forgeSkinData(proxySession.getProxyKeyPair(), this.skinData);
@@ -174,60 +164,7 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
 
             log.debug("Downstream connected");
 
-            //saveSkin(proxySession);
+            //SkinUtils.saveSkin(proxySession, this.skinData);
         });
-    }
-
-    private void saveSkin(ProxyPlayerSession session) {
-        byte[] skin = Base64.getDecoder().decode(skinData.getAsString("SkinData"));
-        int width, height;
-        if (skin.length == SINGLE_SKIN_SIZE) {
-            width = 64;
-            height = 32;
-        } else if (skin.length == DOUBLE_SKIN_SIZE) {
-            width = 64;
-            height = 64;
-        } else if (skin.length == SKIN_128_64_SIZE) {
-            width = 128;
-            height = 64;
-        } else if (skin.length == SKIN_128_128_SIZE) {
-            width = 128;
-            height = 128;
-        } else {
-            throw new IllegalStateException("Invalid skin");
-        }
-        saveImage(session, width, height, skin, "skin");
-
-        byte[] cape = Base64.getDecoder().decode(skinData.getAsString("CapeData"));
-
-        saveImage(session, 64, 32, cape, "cape");
-
-        Path geometryPath = session.getDataPath().resolve("geometry.json");
-        byte[] geometry = Base64.getDecoder().decode(skinData.getAsString("SkinGeometry"));
-        try {
-            Files.write(geometryPath, geometry, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-}
-    }
-
-    private static void saveImage(ProxyPlayerSession session, int width, int height, byte[] bytes, String name) {
-        BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_4BYTE_ABGR);
-
-        ByteArrayInputStream data = new ByteArrayInputStream(bytes);
-
-        for (int y = 0; y < image.getHeight(); y++) {
-            for (int x = 0; x < image.getWidth(); x++) {
-                Color color = new Color(data.read(), data.read(), data.read(), data.read());
-                image.setRGB(x, y, color.getRGB());
-            }
-        }
-
-        Path path = session.getDataPath().resolve(name + ".png");
-        try (OutputStream stream = Files.newOutputStream(path, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)) {
-            ImageIO.write(image, "png", stream);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
     }
 }

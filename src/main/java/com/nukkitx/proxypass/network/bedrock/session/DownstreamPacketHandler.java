@@ -6,6 +6,7 @@ import com.nimbusds.jwt.SignedJWT;
 import com.nukkitx.nbt.stream.LittleEndianDataOutputStream;
 import com.nukkitx.nbt.stream.NBTOutputStream;
 import com.nukkitx.nbt.tag.CompoundTag;
+import com.nukkitx.nbt.tag.ListTag;
 import com.nukkitx.protocol.bedrock.BedrockClientSession;
 import com.nukkitx.protocol.bedrock.data.ContainerId;
 import com.nukkitx.protocol.bedrock.data.ItemData;
@@ -13,6 +14,7 @@ import com.nukkitx.protocol.bedrock.handler.BedrockPacketHandler;
 import com.nukkitx.protocol.bedrock.packet.*;
 import com.nukkitx.protocol.bedrock.util.EncryptionUtils;
 import com.nukkitx.proxypass.ProxyPass;
+import com.nukkitx.proxypass.network.bedrock.util.BlockPaletteUtils;
 import com.nukkitx.proxypass.network.bedrock.util.RecipeUtils;
 import lombok.*;
 import lombok.extern.log4j.Log4j2;
@@ -53,26 +55,26 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
     }
 
     public boolean handle(AvailableEntityIdentifiersPacket packet) {
-        proxy.saveData("entity_identifiers", packet.getTag());
+        proxy.saveNBT("entity_identifiers", packet.getTag());
         return false;
     }
 
     public boolean handle(BiomeDefinitionListPacket packet) {
-        proxy.saveData("biome_definitions", packet.getTag());
+        proxy.saveNBT("biome_definitions", packet.getTag());
         return false;
     }
 
     public boolean handle(StartGamePacket packet) {
-        List<RuntimeEntry> table = new ArrayList<>();
         Map<String, Integer> legacyBlocks = new HashMap<>();
-        for (StartGamePacket.BlockPaletteEntry entry : packet.getPaletteEntries()) {
-            table.add(new RuntimeEntry(entry.getIdentifier(), entry.getLegacyId(), entry.getMeta()));
-            legacyBlocks.putIfAbsent(entry.getIdentifier(), (int) entry.getLegacyId());
+        for (CompoundTag entry : packet.getBlockPalette().getValue()) {
+            legacyBlocks.putIfAbsent(entry.getAsCompound("block").getAsString("name"), (int) entry.getAsShort("id"));
         }
-        table.sort(RuntimeEntry.COMPARATOR);
 
-        proxy.saveObject("legacy_block_ids.json", sortMap(legacyBlocks));
-        proxy.saveObject("runtime_block_states.json", table);
+        proxy.saveJson("legacy_block_ids.json", sortMap(legacyBlocks));
+        List<CompoundTag> palette = new ArrayList<>(packet.getBlockPalette().getValue());
+        palette.sort(Comparator.comparingInt(value -> value.getAsShort("id")));
+        proxy.saveNBT("runtime_block_states", new ListTag<>("", CompoundTag.class, palette));
+        BlockPaletteUtils.convertToJson(proxy, palette);
 
         List<DataEntry> itemData = new ArrayList<>();
         LinkedHashMap<String, Integer> legacyItems = new LinkedHashMap<>();
@@ -84,15 +86,15 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
             }
         }
 
-        proxy.saveObject("legacy_item_ids.json", sortMap(legacyItems));
-        proxy.saveObject("runtime_item_states.json", itemData);
+        proxy.saveJson("legacy_item_ids.json", sortMap(legacyItems));
+        proxy.saveJson("runtime_item_states.json", itemData);
 
         return false;
     }
 
     @Override
     public boolean handle(CraftingDataPacket packet) {
-        RecipeUtils.writeRecipes(packet.getCraftingData(), this.proxy);
+        RecipeUtils.writeRecipes(packet, this.proxy);
 
         return false;
     }
@@ -128,7 +130,7 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
 
             CreativeItems items = new CreativeItems(entries);
 
-            proxy.saveObject("creative_items.json", items);
+            proxy.saveJson("creative_items.json", items);
         }
         return false;
     }

@@ -13,6 +13,7 @@ import com.nukkitx.proxypass.ProxyPass;
 import io.netty.buffer.ByteBuf;
 import lombok.AccessLevel;
 import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.log4j.Log4j2;
 
 import java.io.IOException;
@@ -106,7 +107,7 @@ public class ProxyPlayerSession {
             List<BedrockPacket> unhandled = new ArrayList<>();
             for (BedrockPacket packet : packets) {
                 if (session.isLogging() && log.isTraceEnabled() && !(packet instanceof NetworkStackLatencyPacket)) {
-                    log.trace("Inbound {}: {}", session.getAddress(), packet);
+                    log.trace(this.logPrefix + " {}: {}", session.getAddress(), packet);
                 }
                 ProxyPlayerSession.this.log(() -> logPrefix + packet.toString());
 

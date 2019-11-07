@@ -4,9 +4,8 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.nukkitx.nbt.NbtUtils;
 import com.nukkitx.nbt.stream.NBTOutputStream;
 import com.nukkitx.nbt.tag.CompoundTag;
-import com.nukkitx.protocol.bedrock.data.CraftingData;
-import com.nukkitx.protocol.bedrock.data.CraftingType;
-import com.nukkitx.protocol.bedrock.data.ItemData;
+import com.nukkitx.protocol.bedrock.data.*;
+import com.nukkitx.protocol.bedrock.packet.CraftingDataPacket;
 import com.nukkitx.proxypass.ProxyPass;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -22,10 +21,10 @@ import java.util.*;
 public class RecipeUtils {
     private static final char[] SHAPE_CHARS = {'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'};
 
-    public static void writeRecipes(List<CraftingData> craftingDataList, ProxyPass proxy) {
+    public static void writeRecipes(CraftingDataPacket packet, ProxyPass proxy) {
         List<CraftingDataEntry> entries = new ArrayList<>();
 
-        for (CraftingData craftingData : craftingDataList) {
+        for (CraftingData craftingData : packet.getCraftingData()) {
             CraftingDataEntry entry = new CraftingDataEntry();
 
             CraftingType type = craftingData.getType();
@@ -96,9 +95,9 @@ public class RecipeUtils {
             entries.add(entry);
         }
 
-        Recipes recipes = new Recipes(ProxyPass.CODEC.getProtocolVersion(), entries);
+        Recipes recipes = new Recipes(ProxyPass.CODEC.getProtocolVersion(), entries, packet.getPotionMixData(), packet.getContainerMixData());
 
-        proxy.saveObject("recipes.json", recipes);
+        proxy.saveJson("recipes.json", recipes);
     }
 
     private static Item[] writeItemArray(ItemData[] inputs, boolean output) {
@@ -171,5 +170,7 @@ public class RecipeUtils {
     private static class Recipes {
         private final int version;
         private final List<CraftingDataEntry> recipes;
+        private final List<PotionMixData> potionMixes;
+        private final List<ContainerMixData> containerMixes;
     }
 }
