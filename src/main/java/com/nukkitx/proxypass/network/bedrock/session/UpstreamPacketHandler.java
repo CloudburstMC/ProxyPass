@@ -9,10 +9,8 @@ import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSObject;
 import com.nimbusds.jose.crypto.factories.DefaultJWSVerifierFactory;
 import com.nimbusds.jwt.SignedJWT;
-import com.nukkitx.math.vector.Vector3i;
 import com.nukkitx.protocol.bedrock.BedrockServerSession;
 import com.nukkitx.protocol.bedrock.handler.BedrockPacketHandler;
-import com.nukkitx.protocol.bedrock.packet.CommandRequestPacket;
 import com.nukkitx.protocol.bedrock.packet.LoginPacket;
 import com.nukkitx.protocol.bedrock.packet.PlayStatusPacket;
 import com.nukkitx.protocol.bedrock.util.EncryptionUtils;
@@ -24,9 +22,7 @@ import lombok.extern.log4j.Log4j2;
 import net.minidev.json.JSONObject;
 
 import java.io.IOException;
-
 import java.security.interfaces.ECPublicKey;
-import java.util.Base64;
 import java.util.UUID;
 
 @Log4j2
@@ -132,7 +128,7 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
         log.debug("Initializing proxy session");
         proxy.newClient().connect(proxy.getTargetAddress()).whenComplete((downstream, throwable) -> {
             if (throwable != null) {
-                log.error("Unable to connect to downstream server", throwable);
+                log.error("Unable to connect to downstream server " + proxy.getTargetAddress(), throwable);
                 return;
             }
             downstream.setPacketCodec(ProxyPass.CODEC);

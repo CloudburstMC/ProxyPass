@@ -12,6 +12,8 @@ import java.net.InetSocketAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.Collections;
+import java.util.Set;
 
 @Getter
 @ToString
@@ -24,6 +26,9 @@ public class Configuration {
     private boolean passingThrough = true;
     @JsonProperty("log-packets")
     private boolean loggingPackets = false;
+
+    @JsonProperty("ignored-packets")
+    private Set<String> ignoredPackets = Collections.emptySet();
 
     public static Configuration load(Path path) throws IOException {
         try (BufferedReader reader = Files.newBufferedReader(path)) {

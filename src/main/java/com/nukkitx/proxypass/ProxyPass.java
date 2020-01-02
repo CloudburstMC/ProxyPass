@@ -9,13 +9,13 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
 import com.nukkitx.nbt.NbtUtils;
 import com.nukkitx.nbt.stream.NBTInputStream;
 import com.nukkitx.nbt.stream.NBTOutputStream;
-import com.nukkitx.nbt.stream.NetworkDataOutputStream;
 import com.nukkitx.nbt.tag.Tag;
 import com.nukkitx.protocol.bedrock.BedrockClient;
 import com.nukkitx.protocol.bedrock.BedrockPacketCodec;
 import com.nukkitx.protocol.bedrock.BedrockServer;
-import com.nukkitx.protocol.bedrock.v388.Bedrock_v388;
+import com.nukkitx.protocol.bedrock.v389.Bedrock_v389;
 import com.nukkitx.proxypass.network.ProxyBedrockEventHandler;
+import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.extern.log4j.Log4j2;
 
@@ -25,6 +25,7 @@ import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.file.*;
 import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
@@ -36,7 +37,7 @@ public class ProxyPass {
     public static final ObjectMapper JSON_MAPPER = new ObjectMapper().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
     public static final YAMLMapper YAML_MAPPER = (YAMLMapper) new YAMLMapper().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
     public static final String MINECRAFT_VERSION;
-    public static final BedrockPacketCodec CODEC = Bedrock_v388.V388_CODEC;
+    public static final BedrockPacketCodec CODEC = Bedrock_v389.V389_CODEC;
     public static final int PROTOCOL_VERSION = CODEC.getProtocolVersion();
     private static final DefaultPrettyPrinter PRETTY_PRINTER = new DefaultPrettyPrinter();
 
@@ -58,6 +59,8 @@ public class ProxyPass {
     private final AtomicBoolean running = new AtomicBoolean(true);
     private BedrockServer bedrockServer;
     private final Set<BedrockClient> clients = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    @Getter(AccessLevel.NONE)
+    private final Set<Class<?>> ignoredPackets = Collections.newSetFromMap(new IdentityHashMap<>());
     private InetSocketAddress targetAddress;
     private InetSocketAddress proxyAddress;
     private Configuration configuration;
@@ -85,6 +88,14 @@ public class ProxyPass {
 
         proxyAddress = configuration.getProxy().getAddress();
         targetAddress = configuration.getDestination().getAddress();
+
+        configuration.getIgnoredPackets().forEach(s -> {
+            try {
+                ignoredPackets.add(Class.forName("com.nukkitx.protocol.bedrock.packet." + s));
+            } catch (ClassNotFoundException e) {
+                log.warn("No packet with name {}", s);
+            }
+        });
 
         baseDir = Paths.get(".").toAbsolutePath();
         sessionsDir = baseDir.resolve("sessions");
@@ -170,5 +181,9 @@ public class ProxyPass {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    public boolean isIgnoredPacket(Class<?> clazz) {
+        return this.ignoredPackets.contains(clazz);
     }
 }

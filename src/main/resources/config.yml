@@ -11,3 +11,13 @@ destination:
 pass-through: true
 ## Log packets for each session
 log-packets: true
+
+## Packets to ignore to make your log more refined. These default packet are generally spammed
+ignored-packets:
+  - "NetworkStackLatencyPacket"
+  - "LevelChunkPacket"
+  - "MovePlayerPacket"
+  - "PlayerAuthInputPacket"
+  - "NetworkChunkPublisherUpdatePacket"
+  - "ClientCacheBlobStatusPacket"
+  - "ClientCacheMissResponsePacket"
