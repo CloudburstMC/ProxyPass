@@ -138,7 +138,7 @@ public class ProxyPass {
     }
 
     public void shutdown() {
-        if (running.compareAndSet(false, true)) {
+        if (running.compareAndSet(true, false)) {
             synchronized (this) {
                 this.notify();
             }
