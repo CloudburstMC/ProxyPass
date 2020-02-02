@@ -104,10 +104,12 @@ public class ProxyPlayerSession {
             boolean wrapperHandled = !ProxyPlayerSession.this.proxy.getConfiguration().isPassingThrough();
             List<BedrockPacket> unhandled = new ArrayList<>();
             for (BedrockPacket packet : packets) {
-                if (session.isLogging() && log.isTraceEnabled() && !proxy.isIgnoredPacket(packet.getClass())) {
-                    log.trace(this.logPrefix + " {}: {}", session.getAddress(), packet);
+                if (!proxy.isIgnoredPacket(packet.getClass())) {
+                    if (session.isLogging() && log.isTraceEnabled()) {
+                        log.trace(this.logPrefix + " {}: {}", session.getAddress(), packet);
+                    }
+                    ProxyPlayerSession.this.log(() -> logPrefix + packet.toString());
                 }
-                ProxyPlayerSession.this.log(() -> logPrefix + packet.toString());
 
                 BedrockPacketHandler handler = session.getPacketHandler();
 
