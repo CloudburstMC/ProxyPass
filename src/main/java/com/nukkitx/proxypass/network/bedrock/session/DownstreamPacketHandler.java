@@ -16,7 +16,8 @@ import com.nukkitx.protocol.bedrock.util.EncryptionUtils;
 import com.nukkitx.proxypass.ProxyPass;
 import com.nukkitx.proxypass.network.bedrock.util.BlockPaletteUtils;
 import com.nukkitx.proxypass.network.bedrock.util.RecipeUtils;
-import lombok.*;
+import lombok.RequiredArgsConstructor;
+import lombok.Value;
 import lombok.extern.log4j.Log4j2;
 
 import javax.crypto.SecretKey;
@@ -67,12 +68,12 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
     public boolean handle(StartGamePacket packet) {
         Map<String, Integer> legacyBlocks = new HashMap<>();
         for (CompoundTag entry : packet.getBlockPalette().getValue()) {
-            legacyBlocks.putIfAbsent(entry.getAsCompound("block").getAsString("name"), (int) entry.getAsShort("id"));
+            legacyBlocks.putIfAbsent(entry.getCompound("block").getString("name"), (int) entry.getShort("id"));
         }
 
         proxy.saveJson("legacy_block_ids.json", sortMap(legacyBlocks));
         List<CompoundTag> palette = new ArrayList<>(packet.getBlockPalette().getValue());
-        palette.sort(Comparator.comparingInt(value -> value.getAsShort("id")));
+        palette.sort(Comparator.comparingInt(value -> value.getShort("id")));
         proxy.saveNBT("runtime_block_states", new ListTag<>("", CompoundTag.class, palette));
         BlockPaletteUtils.convertToJson(proxy, palette);
 
@@ -137,7 +138,7 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
 
     private static Map<String, Integer> sortMap(Map<String, Integer> map) {
         List<Map.Entry<String, Integer>> entries = new ArrayList<>(map.entrySet());
-        entries.sort(Comparator.comparing(Map.Entry::getValue));
+        entries.sort(Map.Entry.comparingByValue());
 
         Map<String, Integer> sortedMap = new LinkedHashMap<>();
         for (Map.Entry<String, Integer> entry : entries) {

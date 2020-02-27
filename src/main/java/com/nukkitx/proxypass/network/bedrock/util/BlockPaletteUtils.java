@@ -6,7 +6,10 @@ import com.nukkitx.nbt.tag.CompoundTag;
 import com.nukkitx.proxypass.ProxyPass;
 import lombok.Value;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 public class BlockPaletteUtils {
 
@@ -15,19 +18,19 @@ public class BlockPaletteUtils {
         List<Entry> palette = new ArrayList<>(tags.size());
 
         for (CompoundTag tag : tags) {
-            int id = tag.getAsShort("id");
-            CompoundTag blockTag = tag.getAsCompound("block");
-            String name = blockTag.getAsString("name");
+            int id = tag.getShort("id");
+            CompoundTag blockTag = tag.getCompound("block");
+            String name = blockTag.getString("name");
 
             Map<String, BlockState> states = new LinkedHashMap<>();
 
-            blockTag.getAsCompound("states").getValue().forEach((key, value) -> {
+            blockTag.getCompound("states").getValue().forEach((key, value) -> {
                 states.put(key, new BlockState(value.getValue(), TagType.byClass(value.getClass()).getId()));
             });
 
             Integer meta = null;
             if (tag.contains("meta")) {
-                meta = (int) tag.getAsShort("meta");
+                meta = (int) tag.getShort("meta");
             }
             palette.add(new Entry(id, meta, name, states));
         }
