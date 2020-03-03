@@ -22,8 +22,8 @@ public class Configuration {
     private Address proxy;
     private Address destination;
 
-    @JsonProperty("pass-through")
-    private boolean passingThrough = true;
+    @JsonProperty("packet-testing")
+    private boolean packetTesting = false;
     @JsonProperty("log-packets")
     private boolean loggingPackets = false;
 

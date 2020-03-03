@@ -7,8 +7,8 @@ proxy:
 destination:
   host: 127.0.0.1
   port: 19132
-## Pass packet buffers through to minimize processing (Disable to test protocol library for bugs)
-pass-through: true
+## Encode and decode packets to test protocol library for bugs
+packet-testing: false
 ## Log packets for each session
 log-packets: true
 

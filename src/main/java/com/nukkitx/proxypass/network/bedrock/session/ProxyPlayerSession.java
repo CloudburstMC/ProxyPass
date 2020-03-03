@@ -101,7 +101,8 @@ public class ProxyPlayerSession {
 
         @Override
         public void handle(BedrockSession session, ByteBuf compressed, Collection<BedrockPacket> packets) {
-            boolean wrapperHandled = !ProxyPlayerSession.this.proxy.getConfiguration().isPassingThrough();
+            boolean packetTesting = ProxyPlayerSession.this.proxy.getConfiguration().isPacketTesting();
+            boolean batchHandled = false;
             List<BedrockPacket> unhandled = new ArrayList<>();
             for (BedrockPacket packet : packets) {
                 if (!proxy.isIgnoredPacket(packet.getClass())) {
@@ -114,13 +115,27 @@ public class ProxyPlayerSession {
                 BedrockPacketHandler handler = session.getPacketHandler();
 
                 if (handler != null && packet.handle(handler)) {
-                    wrapperHandled = true;
+                    batchHandled = true;
                 } else {
                     unhandled.add(packet);
                 }
+
+                if (packetTesting) {
+                    ByteBuf buffer = ProxyPass.CODEC.tryEncode(packet);
+                    try {
+                        BedrockPacket packet2 = ProxyPass.CODEC.tryDecode(buffer);
+                        if (!Objects.equals(packet, packet2)) {
+                            // Something went wrong in serialization.
+                            log.warn("Packets instances not equal:\n Original  : {}\nRe-encoded : {}",
+                                    packet, packet2);
+                        }
+                    } finally {
+                        buffer.release();
+                    }
+                }
             }
 
-            if (!wrapperHandled) {
+            if (!batchHandled) {
                 compressed.resetReaderIndex();
                 this.session.sendWrapped(compressed, true);
             } else if (!unhandled.isEmpty()) {
