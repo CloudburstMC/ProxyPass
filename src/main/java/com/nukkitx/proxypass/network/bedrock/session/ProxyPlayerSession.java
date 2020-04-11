@@ -48,6 +48,7 @@ public class ProxyPlayerSession {
         this.authData = authData;
         this.dataPath = proxy.getSessionsDir().resolve(this.authData.getDisplayName() + '-' + timestamp);
         this.logPath = dataPath.resolve("packets.log");
+        log.debug("Packets will be logged under " + logPath.toString());
         this.upstream.addDisconnectHandler(reason -> {
             if (reason != DisconnectReason.DISCONNECTED) {
                 this.downstream.disconnect();
