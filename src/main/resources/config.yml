@@ -15,6 +15,9 @@ log-packets: true
 ## Valid options: console, file or both
 log-to: file
 
+## Minecraft Education Support
+education: false
+
 ## Packets to ignore to make your log more refined. These default packet are generally spammed
 ignored-packets:
   - "NetworkStackLatencyPacket"

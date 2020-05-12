@@ -16,6 +16,7 @@ import com.nukkitx.protocol.bedrock.packet.*;
 import com.nukkitx.protocol.bedrock.util.EncryptionUtils;
 import com.nukkitx.proxypass.ProxyPass;
 import com.nukkitx.proxypass.network.bedrock.util.BlockPaletteUtils;
+import com.nukkitx.proxypass.network.bedrock.util.ForgeryUtils;
 import com.nukkitx.proxypass.network.bedrock.util.RecipeUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
@@ -47,6 +48,17 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
             SecretKey key = EncryptionUtils.getSecretKey(this.player.getProxyKeyPair().getPrivate(), serverKey,
                     Base64.getDecoder().decode(saltJwt.getJWTClaimsSet().getStringClaim("salt")));
             session.enableEncryption(key);
+
+            ServerToClientHandshakePacket p = new ServerToClientHandshakePacket();
+            p.setJwt(ForgeryUtils.forgeHandshake(
+                    player.getProxyKeyPair(),
+                    saltJwt.getJWTClaimsSet().getStringClaim("signedToken"),
+                    Base64.getDecoder().decode(saltJwt.getJWTClaimsSet().getStringClaim("salt"))).serialize()
+            );
+            player.getUpstream().sendPacketImmediately(p);
+            player.getUpstream().enableEncryption(EncryptionUtils.getSecretKey(player.getProxyKeyPair().getPrivate(),
+                    ((UpstreamPacketHandler)player.getUpstream().getPacketHandler()).getRemotePublicKey(),Base64.getDecoder().decode(saltJwt.getJWTClaimsSet().getStringClaim("salt"))));
+
         } catch (ParseException | NoSuchAlgorithmException | InvalidKeySpecException | InvalidKeyException e) {
             throw new RuntimeException(e);
         }
