@@ -11,12 +11,14 @@ import com.nimbusds.jose.crypto.factories.DefaultJWSVerifierFactory;
 import com.nimbusds.jwt.SignedJWT;
 import com.nukkitx.protocol.bedrock.BedrockServerSession;
 import com.nukkitx.protocol.bedrock.handler.BedrockPacketHandler;
+import com.nukkitx.protocol.bedrock.packet.ClientToServerHandshakePacket;
 import com.nukkitx.protocol.bedrock.packet.LoginPacket;
 import com.nukkitx.protocol.bedrock.packet.PlayStatusPacket;
 import com.nukkitx.protocol.bedrock.util.EncryptionUtils;
 import com.nukkitx.proxypass.ProxyPass;
 import com.nukkitx.proxypass.network.bedrock.util.ForgeryUtils;
 import io.netty.util.AsciiString;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import net.minidev.json.JSONObject;
@@ -36,6 +38,8 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
     private ArrayNode chainData;
     private AuthData authData;
     private ProxyPlayerSession player;
+    @Getter
+    private ECPublicKey remotePublicKey;
 
     private static boolean validateChainData(JsonNode data) throws Exception {
         ECPublicKey lastKey = null;
@@ -63,19 +67,24 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
         return jwt.verify(new DefaultJWSVerifierFactory().createJWSVerifier(jwt.getHeader(), key));
     }
 
+    public boolean handle(ClientToServerHandshakePacket packet) {
+        // This is handled ourselves and we don't want a duplicate packet
+        return true;
+    }
+
     @Override
     public boolean handle(LoginPacket packet) {
         int protocolVersion = packet.getProtocolVersion();
 
-        if (protocolVersion != ProxyPass.PROTOCOL_VERSION) {
+        if (protocolVersion != proxy.PROTOCOL_VERSION) {
             PlayStatusPacket status = new PlayStatusPacket();
-            if (protocolVersion > ProxyPass.PROTOCOL_VERSION) {
+            if (protocolVersion > proxy.PROTOCOL_VERSION) {
                 status.setStatus(PlayStatusPacket.Status.FAILED_SERVER);
             } else {
                 status.setStatus(PlayStatusPacket.Status.FAILED_CLIENT);
             }
         }
-        session.setPacketCodec(ProxyPass.CODEC);
+        session.setPacketCodec(proxy.CODEC);
 
         JsonNode certData;
         try {
@@ -111,6 +120,7 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
                 throw new RuntimeException("Identity Public Key was not found!");
             }
             ECPublicKey identityPublicKey = EncryptionUtils.generateKey(payload.get("identityPublicKey").textValue());
+            this.remotePublicKey = identityPublicKey;
 
             JWSObject clientJwt = JWSObject.parse(packet.getSkinData().toString());
             verifyJwt(clientJwt, identityPublicKey);
@@ -131,7 +141,7 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
                 log.error("Unable to connect to downstream server " + proxy.getTargetAddress(), throwable);
                 return;
             }
-            downstream.setPacketCodec(ProxyPass.CODEC);
+            downstream.setPacketCodec(proxy.CODEC);
             ProxyPlayerSession proxySession = new ProxyPlayerSession(this.session, downstream, this.proxy, this.authData);
             this.player = proxySession;
 
@@ -150,7 +160,7 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
             LoginPacket login = new LoginPacket();
             login.setChainData(chainData);
             login.setSkinData(AsciiString.of(skinData.serialize()));
-            login.setProtocolVersion(ProxyPass.PROTOCOL_VERSION);
+            login.setProtocolVersion(proxy.PROTOCOL_VERSION);
 
             downstream.sendPacketImmediately(login);
             this.session.setBatchedHandler(proxySession.getUpstreamBatchHandler());

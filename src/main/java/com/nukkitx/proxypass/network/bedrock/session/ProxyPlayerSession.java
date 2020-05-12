@@ -122,9 +122,9 @@ public class ProxyPlayerSession {
                 }
 
                 if (packetTesting) {
-                    ByteBuf buffer = ProxyPass.CODEC.tryEncode(packet);
+                    ByteBuf buffer = proxy.CODEC.tryEncode(packet);
                     try {
-                        BedrockPacket packet2 = ProxyPass.CODEC.tryDecode(buffer);
+                        BedrockPacket packet2 = proxy.CODEC.tryDecode(buffer);
                         if (!Objects.equals(packet, packet2)) {
                             // Something went wrong in serialization.
                             log.warn("Packets instances not equal:\n Original  : {}\nRe-encoded : {}",

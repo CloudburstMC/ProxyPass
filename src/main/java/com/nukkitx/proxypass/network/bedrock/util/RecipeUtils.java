@@ -95,7 +95,7 @@ public class RecipeUtils {
             entries.add(entry);
         }
 
-        Recipes recipes = new Recipes(ProxyPass.CODEC.getProtocolVersion(), entries, packet.getPotionMixData(), packet.getContainerMixData());
+        Recipes recipes = new Recipes(proxy.CODEC.getProtocolVersion(), entries, packet.getPotionMixData(), packet.getContainerMixData());
 
         proxy.saveJson("recipes.json", recipes);
     }

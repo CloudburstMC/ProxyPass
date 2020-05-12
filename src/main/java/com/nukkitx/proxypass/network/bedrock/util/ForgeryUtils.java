@@ -71,4 +71,32 @@ public class ForgeryUtils {
 
         return jws;
     }
+
+    public static SignedJWT forgeHandshake(KeyPair pair, String signedToken, byte[] token) {
+        String publicKeyBase64 = Base64.getEncoder().encodeToString(pair.getPublic().getEncoded());
+        URI x5u = URI.create(publicKeyBase64);
+
+        JWSHeader header = new JWSHeader.Builder(JWSAlgorithm.ES384).x509CertURL(x5u).build();
+
+        long timestamp = System.currentTimeMillis();
+        Date nbf = new Date(timestamp - TimeUnit.SECONDS.toMillis(1));
+        Date exp = new Date(timestamp + TimeUnit.DAYS.toMillis(1));
+
+        JWTClaimsSet.Builder claimsBuilder = new JWTClaimsSet.Builder()
+                .claim("salt", Base64.getEncoder().encodeToString(token));
+
+        if (signedToken != null) {
+            claimsBuilder.claim("signedToken", signedToken);
+        }
+
+        SignedJWT jwt = new SignedJWT(header, claimsBuilder.build());
+
+        try {
+            EncryptionUtils.signJwt(jwt, (ECPrivateKey) pair.getPrivate());
+        } catch (JOSEException e) {
+            throw new RuntimeException(e);
+        }
+
+        return jwt;
+    }
 }
