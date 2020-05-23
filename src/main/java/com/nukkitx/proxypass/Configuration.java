@@ -26,6 +26,8 @@ public class Configuration {
     private boolean packetTesting = false;
     @JsonProperty("log-packets")
     private boolean loggingPackets = false;
+    @JsonProperty("log-to")
+    private String logTo = "file";
 
     @JsonProperty("ignored-packets")
     private Set<String> ignoredPackets = Collections.emptySet();

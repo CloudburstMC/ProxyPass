@@ -48,17 +48,20 @@ public class ProxyPlayerSession {
         this.authData = authData;
         this.dataPath = proxy.getSessionsDir().resolve(this.authData.getDisplayName() + '-' + timestamp);
         this.logPath = dataPath.resolve("packets.log");
-        log.debug("Packets will be logged under " + logPath.toString());
+        if (proxy.getConfiguration().isLoggingPackets() &&
+                (proxy.getConfiguration().getLogTo().equals("file") || proxy.getConfiguration().getLogTo().equals("both"))) {
+            log.debug("Packets will be logged under " + logPath.toString());
+            try {
+                Files.createDirectories(dataPath);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
         this.upstream.addDisconnectHandler(reason -> {
             if (reason != DisconnectReason.DISCONNECTED) {
                 this.downstream.disconnect();
             }
         });
-        try {
-            Files.createDirectories(dataPath);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
         if (proxy.getConfiguration().isLoggingPackets()) {
             executor.scheduleAtFixedRate(this::flushLogBuffer, 5, 5, TimeUnit.SECONDS);
         }
@@ -83,7 +86,9 @@ public class ProxyPlayerSession {
     private void flushLogBuffer() {
         synchronized (logBuffer) {
             try {
-                Files.write(logPath, logBuffer, StandardOpenOption.APPEND, StandardOpenOption.CREATE);
+                if (proxy.getConfiguration().getLogTo().equals("file") || proxy.getConfiguration().getLogTo().equals("both")) {
+                    Files.write(logPath, logBuffer, StandardOpenOption.APPEND, StandardOpenOption.CREATE);
+                }
                 logBuffer.clear();
             } catch (IOException e) {
                 log.error("Unable to flush packet log", e);
@@ -111,6 +116,10 @@ public class ProxyPlayerSession {
                         log.trace(this.logPrefix + " {}: {}", session.getAddress(), packet);
                     }
                     ProxyPlayerSession.this.log(() -> logPrefix + packet.toString());
+                    if (proxy.getConfiguration().isLoggingPackets() &&
+                            proxy.getConfiguration().getLogTo().equals("console") || proxy.getConfiguration().getLogTo().equals("both")) {
+                        System.out.println(logPrefix + packet.toString());
+                    }
                 }
 
                 BedrockPacketHandler handler = session.getPacketHandler();
