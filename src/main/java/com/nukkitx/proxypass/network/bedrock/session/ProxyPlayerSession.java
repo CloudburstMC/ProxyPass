@@ -8,6 +8,7 @@ import com.nukkitx.protocol.bedrock.BedrockSession;
 import com.nukkitx.protocol.bedrock.handler.BatchHandler;
 import com.nukkitx.protocol.bedrock.handler.BedrockPacketHandler;
 import com.nukkitx.protocol.bedrock.util.EncryptionUtils;
+import com.nukkitx.proxypass.Configuration;
 import com.nukkitx.proxypass.ProxyPass;
 import io.netty.buffer.ByteBuf;
 import lombok.AccessLevel;
@@ -49,7 +50,7 @@ public class ProxyPlayerSession {
         this.dataPath = proxy.getSessionsDir().resolve(this.authData.getDisplayName() + '-' + timestamp);
         this.logPath = dataPath.resolve("packets.log");
         if (proxy.getConfiguration().isLoggingPackets() &&
-                (proxy.getConfiguration().getLogTo().equals("file") || proxy.getConfiguration().getLogTo().equals("both"))) {
+                proxy.getConfiguration().getLogTo().logToFile) {
             log.debug("Packets will be logged under " + logPath.toString());
             try {
                 Files.createDirectories(dataPath);
@@ -86,7 +87,7 @@ public class ProxyPlayerSession {
     private void flushLogBuffer() {
         synchronized (logBuffer) {
             try {
-                if (proxy.getConfiguration().getLogTo().equals("file") || proxy.getConfiguration().getLogTo().equals("both")) {
+                if (proxy.getConfiguration().getLogTo().logToFile) {
                     Files.write(logPath, logBuffer, StandardOpenOption.APPEND, StandardOpenOption.CREATE);
                 }
                 logBuffer.clear();
@@ -117,7 +118,7 @@ public class ProxyPlayerSession {
                     }
                     ProxyPlayerSession.this.log(() -> logPrefix + packet.toString());
                     if (proxy.getConfiguration().isLoggingPackets() &&
-                            proxy.getConfiguration().getLogTo().equals("console") || proxy.getConfiguration().getLogTo().equals("both")) {
+                            proxy.getConfiguration().getLogTo().logToConsole) {
                         System.out.println(logPrefix + packet.toString());
                     }
                 }
