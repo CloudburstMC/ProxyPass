@@ -10,7 +10,6 @@ import com.nukkitx.nbt.tag.ListTag;
 import com.nukkitx.protocol.bedrock.BedrockClientSession;
 import com.nukkitx.protocol.bedrock.data.inventory.ContainerId;
 import com.nukkitx.protocol.bedrock.data.inventory.ItemData;
-import com.nukkitx.protocol.bedrock.data.inventory.ItemDataInstance;
 import com.nukkitx.protocol.bedrock.handler.BedrockPacketHandler;
 import com.nukkitx.protocol.bedrock.packet.*;
 import com.nukkitx.protocol.bedrock.util.EncryptionUtils;
@@ -135,7 +134,7 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
 
     @Override
     public boolean handle(CreativeContentPacket packet) {
-        dumpCreativeItems(packet.getEntries().values().stream().map(ItemDataInstance::getItem).toArray(ItemData[]::new));
+        dumpCreativeItems(packet.getEntries().values().toArray(new ItemData[0]));
         return false;
     }
 
