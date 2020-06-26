@@ -107,31 +107,42 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
         return false;
     }
 
+    private void dumpCreativeItems(ItemData[] contents) {
+        List<CreativeItemEntry> entries = new ArrayList<>();
+        for (ItemData data : contents) {
+            int id = data.getId();
+            Integer damage = data.getDamage() == 0 ? null : (int) data.getDamage();
+
+            CompoundTag tag = data.getTag();
+            String tagData = null;
+            if (tag != null) {
+                ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+                try (NBTOutputStream stream = new NBTOutputStream(new LittleEndianDataOutputStream(byteArrayOutputStream))) {
+                    stream.write(tag);
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+                tagData = Base64.getEncoder().encodeToString(byteArrayOutputStream.toByteArray());
+            }
+            entries.add(new CreativeItemEntry(id, damage, tagData));
+        }
+
+        CreativeItems items = new CreativeItems(entries);
+
+        proxy.saveJson("creative_items.json", items);
+    }
+
+    @Override
+    public boolean handle(CreativeContentPacket packet) {
+        dumpCreativeItems(packet.getEntries().values().toArray(new ItemData[0]));
+        return false;
+    }
+
+    // Pre 1.16 method of Creative Items
     @Override
     public boolean handle(InventoryContentPacket packet) {
         if (packet.getContainerId() == ContainerId.CREATIVE) {
-            List<CreativeItemEntry> entries = new ArrayList<>();
-            for (ItemData data : packet.getContents()) {
-                int id = data.getId();
-                Integer damage = data.getDamage() == 0 ? null : (int) data.getDamage();
-
-                CompoundTag tag = data.getTag();
-                String tagData = null;
-                if (tag != null) {
-                    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-                    try (NBTOutputStream stream = new NBTOutputStream(new LittleEndianDataOutputStream(byteArrayOutputStream))) {
-                        stream.write(tag);
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
-                    tagData = Base64.getEncoder().encodeToString(byteArrayOutputStream.toByteArray());
-                }
-                entries.add(new CreativeItemEntry(id, damage, tagData));
-            }
-
-            CreativeItems items = new CreativeItems(entries);
-
-            proxy.saveJson("creative_items.json", items);
+            dumpCreativeItems(packet.getContents());
         }
         return false;
     }
