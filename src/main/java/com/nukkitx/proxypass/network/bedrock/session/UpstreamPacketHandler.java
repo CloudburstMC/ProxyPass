@@ -138,13 +138,13 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
     private void initializeProxySession() {
         log.debug("Initializing proxy session");
         BedrockClient client = proxy.newClient();
-        client.setRakNetVersion(10);
+        client.setRakNetVersion(ProxyPass.CODEC.getRaknetProtocolVersion());
         client.connect(proxy.getTargetAddress()).whenComplete((downstream, throwable) -> {
             if (throwable != null) {
                 log.error("Unable to connect to downstream server " + proxy.getTargetAddress(), throwable);
                 return;
             }
-            downstream.setPacketCodec(proxy.CODEC);
+            downstream.setPacketCodec(ProxyPass.CODEC);
             ProxyPlayerSession proxySession = new ProxyPlayerSession(this.session, downstream, this.proxy, this.authData);
             this.player = proxySession;
 
@@ -163,7 +163,7 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
             LoginPacket login = new LoginPacket();
             login.setChainData(chainData);
             login.setSkinData(AsciiString.of(skinData.serialize()));
-            login.setProtocolVersion(proxy.PROTOCOL_VERSION);
+            login.setProtocolVersion(ProxyPass.PROTOCOL_VERSION);
 
             downstream.sendPacketImmediately(login);
             this.session.setBatchHandler(proxySession.getUpstreamBatchHandler());
