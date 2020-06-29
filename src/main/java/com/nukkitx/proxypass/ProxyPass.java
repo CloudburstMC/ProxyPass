@@ -38,8 +38,8 @@ public class ProxyPass {
     public static final ObjectMapper JSON_MAPPER = new ObjectMapper().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
     public static final YAMLMapper YAML_MAPPER = (YAMLMapper) new YAMLMapper().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
     public static final String MINECRAFT_VERSION;
-    public static final BedrockPacketCodec CODEC = Bedrock_v407.V407_CODEC;
-    public static final int PROTOCOL_VERSION = CODEC.getProtocolVersion();
+    public static BedrockPacketCodec CODEC;
+    public static int PROTOCOL_VERSION;
     private static final DefaultPrettyPrinter PRETTY_PRINTER = new DefaultPrettyPrinter();
 
     static {
@@ -57,8 +57,6 @@ public class ProxyPass {
         MINECRAFT_VERSION = minecraftVersion;
     }
 
-    public BedrockPacketCodec CODEC;
-    public int PROTOCOL_VERSION;
     private final AtomicBoolean running = new AtomicBoolean(true);
     private BedrockServer bedrockServer;
     private final Set<BedrockClient> clients = Collections.newSetFromMap(new ConcurrentHashMap<>());
@@ -92,7 +90,7 @@ public class ProxyPass {
         if (configuration.isEducation()) {
             CODEC = Bedrock_v363.V363_CODEC;
         } else {
-            CODEC = Bedrock_v390.V390_CODEC;
+            CODEC = Bedrock_v407.V407_CODEC;
         }
 
         PROTOCOL_VERSION = CODEC.getProtocolVersion();
