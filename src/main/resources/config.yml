@@ -11,6 +11,9 @@ destination:
 packet-testing: false
 ## Log packets for each session
 log-packets: true
+## Where to log packet data
+## Valid options: console, file or both
+log-to: file
 ## Minecraft Education Support
 education: false
 

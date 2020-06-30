@@ -1,6 +1,7 @@
 package com.nukkitx.proxypass;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.nukkitx.proxypass.network.bedrock.util.LogTo;
 import lombok.Getter;
 import lombok.ToString;
 
@@ -26,6 +27,8 @@ public class Configuration {
     private boolean packetTesting = false;
     @JsonProperty("log-packets")
     private boolean loggingPackets = false;
+    @JsonProperty("log-to")
+    private LogTo logTo = LogTo.FILE;
 
     @JsonProperty("education")
     private boolean education = false;

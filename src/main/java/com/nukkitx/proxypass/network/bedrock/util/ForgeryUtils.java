@@ -1,23 +1,15 @@
 package com.nukkitx.proxypass.network.bedrock.util;
 
 import com.nimbusds.jose.*;
-import com.nimbusds.jose.crypto.ECDSASigner;
-import com.nimbusds.jose.jwk.ECKey;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import com.nukkitx.protocol.bedrock.util.EncryptionUtils;
 import lombok.experimental.UtilityClass;
 import net.minidev.json.JSONObject;
 
-import javax.crypto.KeyAgreement;
-import javax.crypto.SecretKey;
 import java.net.URI;
-import java.security.*;
+import java.security.KeyPair;
 import java.security.interfaces.ECPrivateKey;
-import java.security.interfaces.ECPublicKey;
-import java.security.spec.ECGenParameterSpec;
-import java.security.spec.InvalidKeySpecException;
-import java.security.spec.X509EncodedKeySpec;
 import java.util.Base64;
 import java.util.Date;
 import java.util.concurrent.TimeUnit;
