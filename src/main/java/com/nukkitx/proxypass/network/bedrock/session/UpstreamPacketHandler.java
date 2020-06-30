@@ -77,15 +77,15 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
     public boolean handle(LoginPacket packet) {
         int protocolVersion = packet.getProtocolVersion();
 
-        if (protocolVersion != proxy.PROTOCOL_VERSION) {
+        if (protocolVersion != ProxyPass.PROTOCOL_VERSION) {
             PlayStatusPacket status = new PlayStatusPacket();
-            if (protocolVersion > proxy.PROTOCOL_VERSION) {
+            if (protocolVersion > ProxyPass.PROTOCOL_VERSION) {
                 status.setStatus(PlayStatusPacket.Status.LOGIN_FAILED_SERVER_OLD);
             } else {
                 status.setStatus(PlayStatusPacket.Status.LOGIN_FAILED_CLIENT_OLD);
             }
         }
-        session.setPacketCodec(proxy.CODEC);
+        session.setPacketCodec(ProxyPass.CODEC);
 
         JsonNode certData;
         try {
