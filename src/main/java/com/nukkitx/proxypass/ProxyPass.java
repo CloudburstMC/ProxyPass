@@ -6,15 +6,15 @@ import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
+import com.nukkitx.nbt.NBTInputStream;
+import com.nukkitx.nbt.NBTOutputStream;
 import com.nukkitx.nbt.NbtUtils;
-import com.nukkitx.nbt.stream.NBTInputStream;
-import com.nukkitx.nbt.stream.NBTOutputStream;
-import com.nukkitx.nbt.tag.Tag;
 import com.nukkitx.protocol.bedrock.BedrockClient;
 import com.nukkitx.protocol.bedrock.BedrockPacketCodec;
 import com.nukkitx.protocol.bedrock.BedrockServer;
 import com.nukkitx.protocol.bedrock.v407.Bedrock_v407;
 import com.nukkitx.proxypass.network.ProxyBedrockEventHandler;
+import io.netty.util.ResourceLeakDetector;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.extern.log4j.Log4j2;
@@ -69,6 +69,7 @@ public class ProxyPass {
     private Path dataDir;
 
     public static void main(String[] args) {
+        ResourceLeakDetector.setLevel(ResourceLeakDetector.Level.PARANOID);
         ProxyPass proxy = new ProxyPass();
         try {
             proxy.boot();
@@ -145,17 +146,17 @@ public class ProxyPass {
         }
     }
 
-    public void saveNBT(String dataName, Tag<?> dataTag) {
+    public void saveNBT(String dataName, Object dataTag) {
         Path path = dataDir.resolve(dataName + ".dat");
         try (OutputStream outputStream = Files.newOutputStream(path, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
              NBTOutputStream nbtOutputStream = NbtUtils.createNetworkWriter(outputStream)){
-            nbtOutputStream.write(dataTag);
+            nbtOutputStream.writeTag(dataTag);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
-    public Tag<?> loadNBT(String dataName) {
+    public Object loadNBT(String dataName) {
         Path path = dataDir.resolve(dataName + ".dat");
         try (InputStream inputStream = Files.newInputStream(path);
              NBTInputStream nbtInputStream = NbtUtils.createNetworkReader(inputStream)){
