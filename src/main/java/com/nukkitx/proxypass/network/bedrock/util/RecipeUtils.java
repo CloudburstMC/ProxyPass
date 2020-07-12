@@ -1,10 +1,10 @@
 package com.nukkitx.proxypass.network.bedrock.util;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.nukkitx.nbt.NBTOutputStream;
+import com.nukkitx.nbt.NbtMap;
 import com.nukkitx.nbt.NbtUtils;
-import com.nukkitx.nbt.stream.NBTOutputStream;
-import com.nukkitx.nbt.tag.CompoundTag;
-import com.nukkitx.protocol.bedrock.data.*;
+import com.nukkitx.protocol.bedrock.data.inventory.*;
 import com.nukkitx.protocol.bedrock.packet.CraftingDataPacket;
 import com.nukkitx.proxypass.ProxyPass;
 import lombok.AllArgsConstructor;
@@ -27,21 +27,21 @@ public class RecipeUtils {
         for (CraftingData craftingData : packet.getCraftingData()) {
             CraftingDataEntry entry = new CraftingDataEntry();
 
-            CraftingType type = craftingData.getType();
+            CraftingDataType type = craftingData.getType();
             entry.type = type.ordinal();
 
-            if (type != CraftingType.MULTI) {
+            if (type != CraftingDataType.MULTI) {
                 entry.block = craftingData.getCraftingTag();
             } else {
                 entry.uuid = craftingData.getUuid();
             }
 
-            if (type == CraftingType.SHAPED || type == CraftingType.SHAPELESS || type == CraftingType.SHAPELESS_CHEMISTRY || type == CraftingType.SHULKER_BOX || type == CraftingType.SHAPED_CHEMISTRY) {
+            if (type == CraftingDataType.SHAPED || type == CraftingDataType.SHAPELESS || type == CraftingDataType.SHAPELESS_CHEMISTRY || type == CraftingDataType.SHULKER_BOX || type == CraftingDataType.SHAPED_CHEMISTRY) {
                 entry.id = craftingData.getRecipeId();
                 entry.priority = craftingData.getPriority();
                 entry.output = writeItemArray(craftingData.getOutputs(), true);
             }
-            if (type == CraftingType.SHAPED || type == CraftingType.SHAPED_CHEMISTRY) {
+            if (type == CraftingDataType.SHAPED || type == CraftingDataType.SHAPED_CHEMISTRY) {
 
                 int charCounter = 0;
                 ItemData[] inputs = craftingData.getInputs();
@@ -81,11 +81,11 @@ public class RecipeUtils {
                 }
                 entry.input = itemMap;
             }
-            if (type == CraftingType.SHAPELESS || type == CraftingType.SHAPELESS_CHEMISTRY || type == CraftingType.SHULKER_BOX) {
+            if (type == CraftingDataType.SHAPELESS || type == CraftingDataType.SHAPELESS_CHEMISTRY || type == CraftingDataType.SHULKER_BOX) {
                 entry.input = writeItemArray(craftingData.getInputs(), false);
             }
 
-            if (type == CraftingType.FURNACE || type == CraftingType.FURNACE_DATA) {
+            if (type == CraftingDataType.FURNACE || type == CraftingDataType.FURNACE_DATA) {
                 Integer damage = craftingData.getInputDamage();
                 if (damage == 0x7fff) damage = -1;
                 if (damage == 0) damage = null;
@@ -111,11 +111,11 @@ public class RecipeUtils {
         return outputs.toArray(new Item[0]);
     }
 
-    private static String nbtToBase64(CompoundTag tag) {
+    private static String nbtToBase64(NbtMap tag) {
         if (tag != null) {
             ByteArrayOutputStream tagStream = new ByteArrayOutputStream();
             try (NBTOutputStream writer = NbtUtils.createWriterLE(tagStream)) {
-                writer.write(tag);
+                writer.writeTag(tag);
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }

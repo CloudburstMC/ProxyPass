@@ -9,6 +9,7 @@ import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSObject;
 import com.nimbusds.jose.crypto.factories.DefaultJWSVerifierFactory;
 import com.nimbusds.jwt.SignedJWT;
+import com.nukkitx.protocol.bedrock.BedrockClient;
 import com.nukkitx.protocol.bedrock.BedrockServerSession;
 import com.nukkitx.protocol.bedrock.handler.BedrockPacketHandler;
 import com.nukkitx.protocol.bedrock.packet.LoginPacket;
@@ -70,9 +71,9 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
         if (protocolVersion != ProxyPass.PROTOCOL_VERSION) {
             PlayStatusPacket status = new PlayStatusPacket();
             if (protocolVersion > ProxyPass.PROTOCOL_VERSION) {
-                status.setStatus(PlayStatusPacket.Status.FAILED_SERVER);
+                status.setStatus(PlayStatusPacket.Status.LOGIN_FAILED_SERVER_OLD);
             } else {
-                status.setStatus(PlayStatusPacket.Status.FAILED_CLIENT);
+                status.setStatus(PlayStatusPacket.Status.LOGIN_FAILED_CLIENT_OLD);
             }
         }
         session.setPacketCodec(ProxyPass.CODEC);
@@ -126,7 +127,9 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
 
     private void initializeProxySession() {
         log.debug("Initializing proxy session");
-        proxy.newClient().connect(proxy.getTargetAddress()).whenComplete((downstream, throwable) -> {
+        BedrockClient client = proxy.newClient();
+        client.setRakNetVersion(10);
+        client.connect(proxy.getTargetAddress()).whenComplete((downstream, throwable) -> {
             if (throwable != null) {
                 log.error("Unable to connect to downstream server " + proxy.getTargetAddress(), throwable);
                 return;
@@ -153,8 +156,8 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
             login.setProtocolVersion(ProxyPass.PROTOCOL_VERSION);
 
             downstream.sendPacketImmediately(login);
-            this.session.setBatchedHandler(proxySession.getUpstreamBatchHandler());
-            downstream.setBatchedHandler(proxySession.getDownstreamTailHandler());
+            this.session.setBatchHandler(proxySession.getUpstreamBatchHandler());
+            downstream.setBatchHandler(proxySession.getDownstreamTailHandler());
             downstream.setLogging(true);
             downstream.setPacketHandler(new DownstreamPacketHandler(downstream, proxySession, this.proxy));
 
