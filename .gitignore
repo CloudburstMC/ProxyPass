@@ -206,3 +206,5 @@ logs/
 logs/*
 packet-logs/
 packet-logs/*
+data/
+sessions/
