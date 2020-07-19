@@ -47,9 +47,8 @@ public class ProxyPass {
         PRETTY_PRINTER.indentObjectsWith(indenter);
         String minecraftVersion;
 
-        Package mainPackage = ProxyPass.class.getPackage();
         try {
-            minecraftVersion = mainPackage.getImplementationVersion().split("-")[0];
+            minecraftVersion = CODEC.getMinecraftVersion();
         } catch (NullPointerException e) {
             minecraftVersion = "0.0.0";
         }
