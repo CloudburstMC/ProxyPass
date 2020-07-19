@@ -49,7 +49,7 @@ public class BlockPaletteUtils {
         proxy.saveJson("runtime_block_states.json", palette);
 
         // Get all block states
-        Map<String, Set<Object>> blockTraits = new HashMap<>();
+        Map<String, Set<Object>> blockTraits = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
 
         for (NbtMap tag : tags) {
             NbtMap map = tag.getCompound("block").getCompound("states");
