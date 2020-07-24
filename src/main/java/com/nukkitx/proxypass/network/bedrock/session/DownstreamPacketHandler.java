@@ -135,7 +135,7 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
 
     @Override
     public boolean handle(CreativeContentPacket packet) {
-        dumpCreativeItems(packet.getEntries().values().toArray(new ItemData[0]));
+        dumpCreativeItems(packet.getContents());
         return false;
     }
 
