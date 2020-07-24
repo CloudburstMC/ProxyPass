@@ -1,35 +1,32 @@
 package com.nukkitx.proxypass.network.bedrock.util;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.nukkitx.nbt.TagType;
-import com.nukkitx.nbt.tag.CompoundTag;
+import com.nukkitx.nbt.NbtMap;
+import com.nukkitx.nbt.NbtType;
 import com.nukkitx.proxypass.ProxyPass;
 import lombok.Value;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class BlockPaletteUtils {
 
-    public static void convertToJson(ProxyPass proxy, List<CompoundTag> tags) {
+    public static void convertToJson(ProxyPass proxy, List<NbtMap> tags) {
 
         List<Entry> palette = new ArrayList<>(tags.size());
 
-        for (CompoundTag tag : tags) {
+        for (NbtMap tag : tags) {
             int id = tag.getShort("id");
-            CompoundTag blockTag = tag.getCompound("block");
+            NbtMap blockTag = tag.getCompound("block");
             String name = blockTag.getString("name");
 
             Map<String, BlockState> states = new LinkedHashMap<>();
 
-            blockTag.getCompound("states").getValue().forEach((key, value) -> {
-                states.put(key, new BlockState(value.getValue(), TagType.byClass(value.getClass()).getId()));
+            blockTag.getCompound("states").forEach((key, value) -> {
+                states.put(key, new BlockState(value, NbtType.byClass(value.getClass()).getId()));
             });
 
             Integer meta = null;
-            if (tag.contains("meta")) {
+            if (tag.containsKey("meta")) {
                 meta = (int) tag.getShort("meta");
             }
             palette.add(new Entry(id, meta, name, states));
@@ -50,6 +47,19 @@ public class BlockPaletteUtils {
 
 
         proxy.saveJson("runtime_block_states.json", palette);
+
+        // Get all block states
+        Map<String, Set<Object>> blockTraits = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+
+        for (NbtMap tag : tags) {
+            NbtMap map = tag.getCompound("block").getCompound("states");
+            map.forEach((trait, value) -> {
+                blockTraits.computeIfAbsent(trait, s -> new HashSet<>())
+                        .add(value);
+            });
+        }
+
+        proxy.saveJson("block_traits.json", blockTraits);
     }
 
     @Value

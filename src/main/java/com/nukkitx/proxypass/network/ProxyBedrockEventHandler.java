@@ -13,7 +13,6 @@ import javax.annotation.ParametersAreNonnullByDefault;
 import java.net.InetSocketAddress;
 
 @Log4j2
-@RequiredArgsConstructor
 @ParametersAreNonnullByDefault
 public class ProxyBedrockEventHandler implements BedrockServerEventHandler {
     private static final BedrockPong ADVERTISEMENT = new BedrockPong();
@@ -29,6 +28,13 @@ public class ProxyBedrockEventHandler implements BedrockServerEventHandler {
         ADVERTISEMENT.setPlayerCount(0);
         ADVERTISEMENT.setMaximumPlayerCount(20);
         ADVERTISEMENT.setSubMotd("https://github.com/NukkitX/ProxyPass");
+    }
+
+    public ProxyBedrockEventHandler(ProxyPass proxy) {
+        this.proxy = proxy;
+        int port = this.proxy.getProxyAddress().getPort();
+        ADVERTISEMENT.setIpv4Port(port);
+        ADVERTISEMENT.setIpv6Port(port);
     }
 
     @Override

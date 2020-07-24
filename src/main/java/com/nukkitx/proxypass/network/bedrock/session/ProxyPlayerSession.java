@@ -5,11 +5,13 @@ import com.nukkitx.protocol.bedrock.BedrockClientSession;
 import com.nukkitx.protocol.bedrock.BedrockPacket;
 import com.nukkitx.protocol.bedrock.BedrockServerSession;
 import com.nukkitx.protocol.bedrock.BedrockSession;
+import com.nukkitx.protocol.bedrock.exception.PacketSerializeException;
 import com.nukkitx.protocol.bedrock.handler.BatchHandler;
 import com.nukkitx.protocol.bedrock.handler.BedrockPacketHandler;
 import com.nukkitx.protocol.bedrock.util.EncryptionUtils;
 import com.nukkitx.proxypass.ProxyPass;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.extern.log4j.Log4j2;
@@ -131,14 +133,18 @@ public class ProxyPlayerSession {
                 }
 
                 if (packetTesting) {
-                    ByteBuf buffer = ProxyPass.CODEC.tryEncode(packet);
+                    int packetId = ProxyPass.CODEC.getId(packet.getClass());
+                    ByteBuf buffer = ByteBufAllocator.DEFAULT.ioBuffer();
                     try {
-                        BedrockPacket packet2 = ProxyPass.CODEC.tryDecode(buffer);
+                        ProxyPass.CODEC.tryEncode(buffer, packet);
+                        BedrockPacket packet2 = ProxyPass.CODEC.tryDecode(buffer, packetId);
                         if (!Objects.equals(packet, packet2)) {
                             // Something went wrong in serialization.
                             log.warn("Packets instances not equal:\n Original  : {}\nRe-encoded : {}",
                                     packet, packet2);
                         }
+                    } catch (PacketSerializeException e) {
+                        //ignore
                     } finally {
                         buffer.release();
                     }

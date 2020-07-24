@@ -6,15 +6,15 @@ import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
+import com.nukkitx.nbt.NBTInputStream;
+import com.nukkitx.nbt.NBTOutputStream;
 import com.nukkitx.nbt.NbtUtils;
-import com.nukkitx.nbt.stream.NBTInputStream;
-import com.nukkitx.nbt.stream.NBTOutputStream;
-import com.nukkitx.nbt.tag.Tag;
 import com.nukkitx.protocol.bedrock.BedrockClient;
 import com.nukkitx.protocol.bedrock.BedrockPacketCodec;
 import com.nukkitx.protocol.bedrock.BedrockServer;
-import com.nukkitx.protocol.bedrock.v390.Bedrock_v390;
+import com.nukkitx.protocol.bedrock.v407.Bedrock_v407;
 import com.nukkitx.proxypass.network.ProxyBedrockEventHandler;
+import io.netty.util.ResourceLeakDetector;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.extern.log4j.Log4j2;
@@ -37,7 +37,7 @@ public class ProxyPass {
     public static final ObjectMapper JSON_MAPPER = new ObjectMapper().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
     public static final YAMLMapper YAML_MAPPER = (YAMLMapper) new YAMLMapper().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
     public static final String MINECRAFT_VERSION;
-    public static final BedrockPacketCodec CODEC = Bedrock_v390.V390_CODEC;
+    public static final BedrockPacketCodec CODEC = Bedrock_v407.V407_CODEC;
     public static final int PROTOCOL_VERSION = CODEC.getProtocolVersion();
     private static final DefaultPrettyPrinter PRETTY_PRINTER = new DefaultPrettyPrinter();
 
@@ -47,9 +47,8 @@ public class ProxyPass {
         PRETTY_PRINTER.indentObjectsWith(indenter);
         String minecraftVersion;
 
-        Package mainPackage = ProxyPass.class.getPackage();
         try {
-            minecraftVersion = mainPackage.getImplementationVersion().split("-")[0];
+            minecraftVersion = CODEC.getMinecraftVersion();
         } catch (NullPointerException e) {
             minecraftVersion = "0.0.0";
         }
@@ -69,6 +68,7 @@ public class ProxyPass {
     private Path dataDir;
 
     public static void main(String[] args) {
+        ResourceLeakDetector.setLevel(ResourceLeakDetector.Level.PARANOID);
         ProxyPass proxy = new ProxyPass();
         try {
             proxy.boot();
@@ -145,17 +145,17 @@ public class ProxyPass {
         }
     }
 
-    public void saveNBT(String dataName, Tag<?> dataTag) {
+    public void saveNBT(String dataName, Object dataTag) {
         Path path = dataDir.resolve(dataName + ".dat");
         try (OutputStream outputStream = Files.newOutputStream(path, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
              NBTOutputStream nbtOutputStream = NbtUtils.createNetworkWriter(outputStream)){
-            nbtOutputStream.write(dataTag);
+            nbtOutputStream.writeTag(dataTag);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
-    public Tag<?> loadNBT(String dataName) {
+    public Object loadNBT(String dataName) {
         Path path = dataDir.resolve(dataName + ".dat");
         try (InputStream inputStream = Files.newInputStream(path);
              NBTInputStream nbtInputStream = NbtUtils.createNetworkReader(inputStream)){
