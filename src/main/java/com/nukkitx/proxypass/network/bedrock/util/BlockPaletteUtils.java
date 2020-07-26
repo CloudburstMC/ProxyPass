@@ -6,10 +6,7 @@ import com.nukkitx.nbt.NbtType;
 import com.nukkitx.proxypass.ProxyPass;
 import lombok.Value;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class BlockPaletteUtils {
 
@@ -50,6 +47,19 @@ public class BlockPaletteUtils {
 
 
         proxy.saveJson("runtime_block_states.json", palette);
+
+        // Get all block states
+        Map<String, Set<Object>> blockTraits = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+
+        for (NbtMap tag : tags) {
+            NbtMap map = tag.getCompound("block").getCompound("states");
+            map.forEach((trait, value) -> {
+                blockTraits.computeIfAbsent(trait, s -> new HashSet<>())
+                        .add(value);
+            });
+        }
+
+        proxy.saveJson("block_traits.json", blockTraits);
     }
 
     @Value
