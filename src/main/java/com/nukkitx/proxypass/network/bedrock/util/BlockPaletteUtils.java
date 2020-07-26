@@ -17,8 +17,8 @@ public class BlockPaletteUtils {
         palette.sort((o1, o2) -> {
             int compare = Integer.compare(o1.getShort("id"), o2.getShort("id"));
             if (compare == 0) {
-                NbtMap states1 = o1.getCompound("states");
-                NbtMap states2 = o2.getCompound("states");
+                NbtMap states1 = o1.getCompound("block").getCompound("states");
+                NbtMap states2 = o2.getCompound("block").getCompound("states");
                 for (Map.Entry<String, Object> entry : states1.entrySet()) {
                     Object bs2 = states2.get(entry.getKey());
                     compare = ((Comparable) entry.getValue()).compareTo(bs2);
