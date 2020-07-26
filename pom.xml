@@ -14,6 +14,17 @@
             <id>nukkitx-repo</id>
             <url>https://repo.nukkitx.com/snapshot</url>
         </repository>
+        <!-- Bundabrg's Repo (Whilst Protocol v363 is unmerged) -->
+        <repository>
+            <id>bundabrg-repo</id>
+            <url>https://repo.worldguard.com.au/repository/maven-public</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+        </repository>
     </repositories>
 
     <properties>
