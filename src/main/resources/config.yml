@@ -17,6 +17,9 @@ log-to: file
 ## Minecraft Education Support
 education: false
 
+## Minecraft Education Support
+education: false
+
 ## Packets to ignore to make your log more refined. These default packet are generally spammed
 ignored-packets:
   - "NetworkStackLatencyPacket"

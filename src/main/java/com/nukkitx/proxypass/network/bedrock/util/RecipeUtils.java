@@ -1,9 +1,9 @@
 package com.nukkitx.proxypass.network.bedrock.util;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.nukkitx.nbt.NBTOutputStream;
+import com.nukkitx.nbt.NbtMap;
 import com.nukkitx.nbt.NbtUtils;
-import com.nukkitx.nbt.stream.NBTOutputStream;
-import com.nukkitx.nbt.tag.CompoundTag;
 import com.nukkitx.protocol.bedrock.data.inventory.*;
 import com.nukkitx.protocol.bedrock.packet.CraftingDataPacket;
 import com.nukkitx.proxypass.ProxyPass;
@@ -111,11 +111,11 @@ public class RecipeUtils {
         return outputs.toArray(new Item[0]);
     }
 
-    private static String nbtToBase64(CompoundTag tag) {
+    private static String nbtToBase64(NbtMap tag) {
         if (tag != null) {
             ByteArrayOutputStream tagStream = new ByteArrayOutputStream();
             try (NBTOutputStream writer = NbtUtils.createWriterLE(tagStream)) {
-                writer.write(tag);
+                writer.writeTag(tag);
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
