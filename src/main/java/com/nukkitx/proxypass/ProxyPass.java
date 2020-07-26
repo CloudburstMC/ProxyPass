@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
 import com.nukkitx.nbt.NBTInputStream;
 import com.nukkitx.nbt.NBTOutputStream;
+import com.nukkitx.nbt.NbtMap;
 import com.nukkitx.nbt.NbtUtils;
 import com.nukkitx.protocol.bedrock.BedrockClient;
 import com.nukkitx.protocol.bedrock.BedrockPacketCodec;
@@ -24,6 +25,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.util.Collections;
 import java.util.IdentityHashMap;
@@ -179,6 +181,15 @@ public class ProxyPass {
         Path path = dataDir.resolve(name);
         try (InputStream inputStream = Files.newInputStream(path, StandardOpenOption.READ)) {
             return ProxyPass.JSON_MAPPER.readValue(inputStream, reference);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public void saveMojangson(String name, NbtMap nbt) {
+        Path outPath = dataDir.resolve(name);
+        try {
+            Files.write(outPath, nbt.toString().getBytes(StandardCharsets.UTF_8), StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
