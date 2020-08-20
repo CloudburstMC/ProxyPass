@@ -12,8 +12,8 @@ import com.nukkitx.nbt.NbtUtils;
 import com.nukkitx.protocol.bedrock.BedrockClient;
 import com.nukkitx.protocol.bedrock.BedrockPacketCodec;
 import com.nukkitx.protocol.bedrock.BedrockServer;
-import com.nukkitx.protocol.bedrock.v363.Bedrock_v363;
-import com.nukkitx.protocol.bedrock.v407.Bedrock_v407;
+import com.nukkitx.protocol.bedrock.v408.Bedrock_v408;
+import com.nukkitx.protocol.education.v390.Education_v390;
 import com.nukkitx.proxypass.network.ProxyBedrockEventHandler;
 import io.netty.util.ResourceLeakDetector;
 import lombok.AccessLevel;
@@ -88,9 +88,9 @@ public class ProxyPass {
         configuration = Configuration.load(configPath);
 
         if (configuration.isEducation()) {
-            CODEC = Bedrock_v363.V363_CODEC;
+            CODEC = Education_v390.V390_CODEC;
         } else {
-            CODEC = Bedrock_v407.V407_CODEC;
+            CODEC = Bedrock_v408.V408_CODEC;
         }
 
         PROTOCOL_VERSION = CODEC.getProtocolVersion();

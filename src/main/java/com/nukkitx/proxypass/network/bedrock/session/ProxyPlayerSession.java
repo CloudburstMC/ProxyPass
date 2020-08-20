@@ -144,7 +144,8 @@ public class ProxyPlayerSession {
                                     packet, packet2);
                         }
                     } catch (PacketSerializeException e) {
-                        //ignore
+                        log.warn("An exception occurred trying to test packet:\n {}", packet);
+                        e.printStackTrace();
                     } finally {
                         buffer.release();
                     }
