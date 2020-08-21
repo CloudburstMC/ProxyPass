@@ -30,6 +30,9 @@ public class Configuration {
     @JsonProperty("log-to")
     private LogTo logTo = LogTo.FILE;
 
+    @JsonProperty("education")
+    private boolean education = false;
+
     @JsonProperty("ignored-packets")
     private Set<String> ignoredPackets = Collections.emptySet();
 

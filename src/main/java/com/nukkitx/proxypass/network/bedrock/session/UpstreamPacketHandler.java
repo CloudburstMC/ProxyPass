@@ -12,12 +12,14 @@ import com.nimbusds.jwt.SignedJWT;
 import com.nukkitx.protocol.bedrock.BedrockClient;
 import com.nukkitx.protocol.bedrock.BedrockServerSession;
 import com.nukkitx.protocol.bedrock.handler.BedrockPacketHandler;
+import com.nukkitx.protocol.bedrock.packet.ClientToServerHandshakePacket;
 import com.nukkitx.protocol.bedrock.packet.LoginPacket;
 import com.nukkitx.protocol.bedrock.packet.PlayStatusPacket;
 import com.nukkitx.protocol.bedrock.util.EncryptionUtils;
 import com.nukkitx.proxypass.ProxyPass;
 import com.nukkitx.proxypass.network.bedrock.util.ForgeryUtils;
 import io.netty.util.AsciiString;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import net.minidev.json.JSONObject;
@@ -37,6 +39,8 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
     private ArrayNode chainData;
     private AuthData authData;
     private ProxyPlayerSession player;
+    @Getter
+    private ECPublicKey remotePublicKey;
 
     private static boolean validateChainData(JsonNode data) throws Exception {
         ECPublicKey lastKey = null;
@@ -62,6 +66,11 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
 
     private static boolean verifyJwt(JWSObject jwt, ECPublicKey key) throws JOSEException {
         return jwt.verify(new DefaultJWSVerifierFactory().createJWSVerifier(jwt.getHeader(), key));
+    }
+
+    public boolean handle(ClientToServerHandshakePacket packet) {
+        // This is handled ourselves and we don't want a duplicate packet
+        return true;
     }
 
     @Override
@@ -112,6 +121,7 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
                 throw new RuntimeException("Identity Public Key was not found!");
             }
             ECPublicKey identityPublicKey = EncryptionUtils.generateKey(payload.get("identityPublicKey").textValue());
+            this.remotePublicKey = identityPublicKey;
 
             JWSObject clientJwt = JWSObject.parse(packet.getSkinData().toString());
             verifyJwt(clientJwt, identityPublicKey);
@@ -128,7 +138,7 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
     private void initializeProxySession() {
         log.debug("Initializing proxy session");
         BedrockClient client = proxy.newClient();
-        client.setRakNetVersion(10);
+        client.setRakNetVersion(ProxyPass.CODEC.getRaknetProtocolVersion());
         client.connect(proxy.getTargetAddress()).whenComplete((downstream, throwable) -> {
             if (throwable != null) {
                 log.error("Unable to connect to downstream server " + proxy.getTargetAddress(), throwable);
