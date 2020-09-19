@@ -67,16 +67,16 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
     }
 
     public boolean handle(StartGamePacket packet) {
-        Map<String, Integer> legacyBlocks = new HashMap<>();
-        for (NbtMap entry : packet.getBlockPalette()) {
-            legacyBlocks.putIfAbsent(entry.getCompound("block").getString("name"), (int) entry.getShort("id"));
-        }
-
-        proxy.saveJson("legacy_block_ids.json", sortMap(legacyBlocks));
-        List<NbtMap> palette = new ArrayList<>(packet.getBlockPalette());
-        palette.sort(Comparator.comparingInt(value -> value.getShort("id")));
-        proxy.saveNBT("runtime_block_states", new NbtList<>(NbtType.COMPOUND, palette));
-        BlockPaletteUtils.convertToJson(proxy, palette);
+//        Map<String, Integer> legacyBlocks = new HashMap<>();
+//        for (NbtMap entry : packet.getBlockPalette()) {
+//            legacyBlocks.putIfAbsent(entry.getCompound("block").getString("name"), (int) entry.getShort("id"));
+//        }
+//
+//        proxy.saveJson("legacy_block_ids.json", sortMap(legacyBlocks));
+//        List<NbtMap> palette = new ArrayList<>(packet.getBlockPalette());
+//        palette.sort(Comparator.comparingInt(value -> value.getShort("id")));
+//        proxy.saveNBT("runtime_block_states", new NbtList<>(NbtType.COMPOUND, palette));
+//        BlockPaletteUtils.convertToJson(proxy, palette);
 
         List<DataEntry> itemData = new ArrayList<>();
         LinkedHashMap<String, Integer> legacyItems = new LinkedHashMap<>();
@@ -87,6 +87,8 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
                 legacyItems.putIfAbsent(entry.getIdentifier(), (int) entry.getId());
             }
         }
+
+        itemData.sort(Comparator.comparing(o -> o.name));
 
         proxy.saveJson("legacy_item_ids.json", sortMap(legacyItems));
         proxy.saveJson("runtime_item_states.json", itemData);
@@ -150,7 +152,7 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
 
     private static Map<String, Integer> sortMap(Map<String, Integer> map) {
         List<Map.Entry<String, Integer>> entries = new ArrayList<>(map.entrySet());
-        entries.sort(Map.Entry.comparingByValue());
+        entries.sort(Map.Entry.comparingByKey());
 
         Map<String, Integer> sortedMap = new LinkedHashMap<>();
         for (Map.Entry<String, Integer> entry : entries) {
