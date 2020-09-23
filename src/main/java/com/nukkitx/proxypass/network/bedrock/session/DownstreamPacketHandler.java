@@ -15,7 +15,6 @@ import com.nukkitx.protocol.bedrock.handler.BedrockPacketHandler;
 import com.nukkitx.protocol.bedrock.packet.*;
 import com.nukkitx.protocol.bedrock.util.EncryptionUtils;
 import com.nukkitx.proxypass.ProxyPass;
-import com.nukkitx.proxypass.network.bedrock.util.BlockPaletteUtils;
 import com.nukkitx.proxypass.network.bedrock.util.RecipeUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
