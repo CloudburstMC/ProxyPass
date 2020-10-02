@@ -58,6 +58,7 @@ public class ProxyPass {
     private final AtomicBoolean running = new AtomicBoolean(true);
     private BedrockServer bedrockServer;
     private final Set<BedrockClient> clients = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private Integer maxClients;
     @Getter(AccessLevel.NONE)
     private final Set<Class<?>> ignoredPackets = Collections.newSetFromMap(new IdentityHashMap<>());
     private InetSocketAddress targetAddress;
@@ -88,6 +89,7 @@ public class ProxyPass {
 
         proxyAddress = configuration.getProxy().getAddress();
         targetAddress = configuration.getDestination().getAddress();
+        maxClients = configuration.getMaxClients();
 
         configuration.getIgnoredPackets().forEach(s -> {
             try {
@@ -185,5 +187,9 @@ public class ProxyPass {
 
     public boolean isIgnoredPacket(Class<?> clazz) {
         return this.ignoredPackets.contains(clazz);
+    }
+    
+    public boolean isFull() {
+        return maxClients > 0 ? this.clients.size() < maxClients : false;
     }
 }
