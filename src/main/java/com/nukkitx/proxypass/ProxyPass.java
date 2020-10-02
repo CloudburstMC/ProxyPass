@@ -190,6 +190,6 @@ public class ProxyPass {
     }
     
     public boolean isFull() {
-        return maxClients > 0 ? this.clients.size() < maxClients : false;
+        return maxClients > 0 ? this.clients.size() >= maxClients : false;
     }
 }
