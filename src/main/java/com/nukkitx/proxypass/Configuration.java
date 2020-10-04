@@ -28,7 +28,7 @@ public class Configuration {
     @JsonProperty("log-packets")
     private boolean loggingPackets = false;
     @JsonProperty("max-clients")
-    private Integer maxClients = 0;
+    private int maxClients = 0;
     @JsonProperty("log-to")
     private LogTo logTo = LogTo.FILE;
 
