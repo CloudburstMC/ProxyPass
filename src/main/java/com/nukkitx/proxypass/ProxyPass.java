@@ -58,7 +58,7 @@ public class ProxyPass {
     private final AtomicBoolean running = new AtomicBoolean(true);
     private BedrockServer bedrockServer;
     private final Set<BedrockClient> clients = Collections.newSetFromMap(new ConcurrentHashMap<>());
-    private Integer maxClients = 0;
+    private int maxClients = 0;
     @Getter(AccessLevel.NONE)
     private final Set<Class<?>> ignoredPackets = Collections.newSetFromMap(new IdentityHashMap<>());
     private InetSocketAddress targetAddress;
