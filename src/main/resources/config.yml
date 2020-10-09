@@ -7,6 +7,8 @@ proxy:
 destination:
   host: 127.0.0.1
   port: 19132
+## Maximum of clients which can connect to ProxyPass. If this should be disabled, set it to 0.
+max-clients: 0
 ## Encode and decode packets to test protocol library for bugs
 packet-testing: false
 ## Log packets for each session
