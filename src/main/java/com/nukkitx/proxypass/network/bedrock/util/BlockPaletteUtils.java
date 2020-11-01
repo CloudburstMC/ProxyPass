@@ -12,31 +12,16 @@ public class BlockPaletteUtils {
 
     public static void convertToJson(ProxyPass proxy, List<NbtMap> tags) {
 
-        List<Entry> palette = new ArrayList<>(tags.size());
+        List<NbtMap> palette = new ArrayList<>(tags);
 
-        for (NbtMap tag : tags) {
-            int id = tag.getShort("id");
-            NbtMap blockTag = tag.getCompound("block");
-            String name = blockTag.getString("name");
-
-            Map<String, BlockState> states = new LinkedHashMap<>();
-
-            blockTag.getCompound("states").forEach((key, value) -> {
-                states.put(key, new BlockState(value, NbtType.byClass(value.getClass()).getId()));
-            });
-
-            Integer meta = null;
-            if (tag.containsKey("meta")) {
-                meta = (int) tag.getShort("meta");
-            }
-            palette.add(new Entry(id, meta, name, states));
-        }
         palette.sort((o1, o2) -> {
-            int compare = Integer.compare(o1.id, o2.id);
+            int compare = Integer.compare(o1.getShort("id"), o2.getShort("id"));
             if (compare == 0) {
-                for (Map.Entry<String, BlockState> entry : o1.states.entrySet()) {
-                    BlockState bs2 = o2.states.get(entry.getKey());
-                    compare = ((Comparable) entry.getValue().val).compareTo(bs2.val);
+                NbtMap states1 = o1.getCompound("block").getCompound("states");
+                NbtMap states2 = o2.getCompound("block").getCompound("states");
+                for (Map.Entry<String, Object> entry : states1.entrySet()) {
+                    Object bs2 = states2.get(entry.getKey());
+                    compare = ((Comparable) entry.getValue()).compareTo(bs2);
                     if (compare != 0) {
                         break;
                     }
@@ -45,8 +30,9 @@ public class BlockPaletteUtils {
             return compare;
         });
 
-
-        proxy.saveJson("runtime_block_states.json", palette);
+        proxy.saveMojangson("runtime_block_states.mojangson", NbtMap.builder()
+                .putList("palette", NbtType.COMPOUND, palette)
+                .build());
 
         // Get all block states
         Map<String, Set<Object>> blockTraits = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);

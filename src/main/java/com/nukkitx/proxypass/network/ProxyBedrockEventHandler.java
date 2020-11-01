@@ -39,7 +39,7 @@ public class ProxyBedrockEventHandler implements BedrockServerEventHandler {
 
     @Override
     public boolean onConnectionRequest(InetSocketAddress address) {
-        return true;
+        return !this.proxy.isFull();
     }
 
     @Nonnull
