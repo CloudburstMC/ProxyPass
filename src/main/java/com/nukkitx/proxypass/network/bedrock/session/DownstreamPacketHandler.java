@@ -4,9 +4,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.nimbusds.jwt.SignedJWT;
 import com.nukkitx.nbt.NBTOutputStream;
-import com.nukkitx.nbt.NbtList;
 import com.nukkitx.nbt.NbtMap;
-import com.nukkitx.nbt.NbtType;
 import com.nukkitx.nbt.util.stream.LittleEndianDataOutputStream;
 import com.nukkitx.protocol.bedrock.BedrockClientSession;
 import com.nukkitx.protocol.bedrock.data.inventory.ContainerId;
@@ -15,7 +13,6 @@ import com.nukkitx.protocol.bedrock.handler.BedrockPacketHandler;
 import com.nukkitx.protocol.bedrock.packet.*;
 import com.nukkitx.protocol.bedrock.util.EncryptionUtils;
 import com.nukkitx.proxypass.ProxyPass;
-import com.nukkitx.proxypass.network.bedrock.util.BlockPaletteUtils;
 import com.nukkitx.proxypass.network.bedrock.util.RecipeUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
@@ -67,28 +64,11 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
     }
 
     public boolean handle(StartGamePacket packet) {
-        Map<String, Integer> legacyBlocks = new HashMap<>();
-        for (NbtMap entry : packet.getBlockPalette()) {
-            legacyBlocks.putIfAbsent(entry.getCompound("block").getString("name"), (int) entry.getShort("id"));
-        }
-
-        proxy.saveJson("legacy_block_ids.json", sortMap(legacyBlocks));
-        List<NbtMap> palette = new ArrayList<>(packet.getBlockPalette());
-        palette.sort(Comparator.comparingInt(value -> value.getShort("id")));
-        proxy.saveNBT("runtime_block_states", new NbtList<>(NbtType.COMPOUND, palette));
-        BlockPaletteUtils.convertToJson(proxy, palette);
-
         List<DataEntry> itemData = new ArrayList<>();
-        LinkedHashMap<String, Integer> legacyItems = new LinkedHashMap<>();
 
         for (StartGamePacket.ItemEntry entry : packet.getItemEntries()) {
             itemData.add(new DataEntry(entry.getIdentifier(), entry.getId()));
-            if (entry.getId() > 255) {
-                legacyItems.putIfAbsent(entry.getIdentifier(), (int) entry.getId());
-            }
         }
-
-        proxy.saveJson("legacy_item_ids.json", sortMap(legacyItems));
         proxy.saveJson("runtime_item_states.json", itemData);
 
         return false;
@@ -143,7 +123,7 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
     @Override
     public boolean handle(InventoryContentPacket packet) {
         if (packet.getContainerId() == ContainerId.CREATIVE) {
-            dumpCreativeItems(packet.getContents());
+            dumpCreativeItems(packet.getContents().toArray(new ItemData[0]));
         }
         return false;
     }
