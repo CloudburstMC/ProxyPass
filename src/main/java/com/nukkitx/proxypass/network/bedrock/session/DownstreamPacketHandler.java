@@ -67,6 +67,11 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
         List<DataEntry> itemData = new ArrayList<>();
 
         for (StartGamePacket.ItemEntry entry : packet.getItemEntries()) {
+            if (entry.getIdentifier().equals("minecraft:shield")) {
+                // Set shield ID for incoming and outgoing packets
+                session.getHardcodedBlockingId().set(entry.getId());
+                player.getUpstream().getHardcodedBlockingId().set(entry.getId());
+            }
             itemData.add(new DataEntry(entry.getIdentifier(), entry.getId()));
         }
         proxy.saveJson("runtime_item_states.json", itemData);

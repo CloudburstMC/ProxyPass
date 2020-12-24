@@ -138,6 +138,8 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
             ProxyPlayerSession proxySession = new ProxyPlayerSession(this.session, downstream, this.proxy, this.authData);
             this.player = proxySession;
 
+            downstream.getHardcodedBlockingId().set(355);
+
             SignedJWT authData = ForgeryUtils.forgeAuthData(proxySession.getProxyKeyPair(), extraData);
             JWSObject skinData = ForgeryUtils.forgeSkinData(proxySession.getProxyKeyPair(), this.skinData);
             chainData.remove(chainData.size() - 1);
