@@ -39,12 +39,12 @@ public class RecipeUtils {
             if (type == CraftingDataType.SHAPED || type == CraftingDataType.SHAPELESS || type == CraftingDataType.SHAPELESS_CHEMISTRY || type == CraftingDataType.SHULKER_BOX || type == CraftingDataType.SHAPED_CHEMISTRY) {
                 entry.id = craftingData.getRecipeId();
                 entry.priority = craftingData.getPriority();
-                entry.output = writeItemArray(craftingData.getOutputs(), true);
+                entry.output = writeItemArray(craftingData.getOutputs().toArray(new ItemData[0]), true);
             }
             if (type == CraftingDataType.SHAPED || type == CraftingDataType.SHAPED_CHEMISTRY) {
 
                 int charCounter = 0;
-                ItemData[] inputs = craftingData.getInputs();
+                ItemData[] inputs = craftingData.getInputs().toArray(new ItemData[0]);
                 Map<Item, Character> charItemMap = new HashMap<>();
                 char[][] shape = new char[craftingData.getHeight()][craftingData.getWidth()];
 
@@ -82,7 +82,7 @@ public class RecipeUtils {
                 entry.input = itemMap;
             }
             if (type == CraftingDataType.SHAPELESS || type == CraftingDataType.SHAPELESS_CHEMISTRY || type == CraftingDataType.SHULKER_BOX) {
-                entry.input = writeItemArray(craftingData.getInputs(), false);
+                entry.input = writeItemArray(craftingData.getInputs().toArray(new ItemData[0]), false);
             }
 
             if (type == CraftingDataType.FURNACE || type == CraftingDataType.FURNACE_DATA) {
@@ -90,7 +90,7 @@ public class RecipeUtils {
                 if (damage == 0x7fff) damage = -1;
                 if (damage == 0) damage = null;
                 entry.input = new Item(craftingData.getInputId(), damage, null, null);
-                entry.output = itemFromNetwork(craftingData.getOutputs()[0], true);
+                entry.output = itemFromNetwork(craftingData.getOutputs().get(0), true);
             }
             entries.add(entry);
         }
