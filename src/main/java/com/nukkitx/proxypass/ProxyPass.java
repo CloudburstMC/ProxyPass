@@ -1,5 +1,7 @@
 package com.nukkitx.proxypass;
 
+import au.com.grieve.reversion.protocol.bedrock.v428.Bedrock_v428;
+import au.com.grieve.reversion.protocol.education.v391.Education_v391;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.core.util.DefaultIndenter;
 import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
@@ -12,8 +14,6 @@ import com.nukkitx.nbt.NbtUtils;
 import com.nukkitx.protocol.bedrock.BedrockClient;
 import com.nukkitx.protocol.bedrock.BedrockPacketCodec;
 import com.nukkitx.protocol.bedrock.BedrockServer;
-import com.nukkitx.protocol.bedrock.v408.Bedrock_v408;
-import com.nukkitx.protocol.education.v390.Education_v390;
 import com.nukkitx.proxypass.network.ProxyBedrockEventHandler;
 import io.netty.util.ResourceLeakDetector;
 import lombok.AccessLevel;
@@ -88,9 +88,9 @@ public class ProxyPass {
         configuration = Configuration.load(configPath);
 
         if (configuration.isEducation()) {
-            CODEC = Education_v390.V390_CODEC;
+            CODEC = Education_v391.V391_CODEC;
         } else {
-            CODEC = Bedrock_v408.V408_CODEC;
+            CODEC = Bedrock_v428.V428_CODEC;
         }
 
         PROTOCOL_VERSION = CODEC.getProtocolVersion();
