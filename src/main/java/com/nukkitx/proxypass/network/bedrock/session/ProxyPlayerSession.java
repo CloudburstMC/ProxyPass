@@ -8,6 +8,7 @@ import com.nukkitx.protocol.bedrock.BedrockSession;
 import com.nukkitx.protocol.bedrock.exception.PacketSerializeException;
 import com.nukkitx.protocol.bedrock.handler.BatchHandler;
 import com.nukkitx.protocol.bedrock.handler.BedrockPacketHandler;
+import com.nukkitx.protocol.bedrock.packet.UnknownPacket;
 import com.nukkitx.protocol.bedrock.util.EncryptionUtils;
 import com.nukkitx.proxypass.ProxyPass;
 import io.netty.buffer.ByteBuf;
@@ -132,7 +133,7 @@ public class ProxyPlayerSession {
                     unhandled.add(packet);
                 }
 
-                if (packetTesting) {
+                if (packetTesting && !(packet instanceof UnknownPacket)) {
                     int packetId = ProxyPass.CODEC.getId(packet.getClass());
                     ByteBuf buffer = ByteBufAllocator.DEFAULT.ioBuffer();
                     try {

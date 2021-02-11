@@ -15,9 +15,10 @@ import com.nukkitx.protocol.bedrock.handler.BedrockPacketHandler;
 import com.nukkitx.protocol.bedrock.packet.*;
 import com.nukkitx.protocol.bedrock.util.EncryptionUtils;
 import com.nukkitx.proxypass.ProxyPass;
-import com.nukkitx.proxypass.network.bedrock.util.BlockPaletteUtils;
 import com.nukkitx.proxypass.network.bedrock.util.ForgeryUtils;
 import com.nukkitx.proxypass.network.bedrock.util.RecipeUtils;
+import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
 import lombok.extern.log4j.Log4j2;
@@ -39,6 +40,7 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
     private final BedrockClientSession session;
     private final ProxyPlayerSession player;
     private final ProxyPass proxy;
+    private Int2ObjectMap<StartGamePacket.ItemEntry> itemEntries = new Int2ObjectOpenHashMap<>();
 
     public boolean handle(ServerToClientHandshakePacket packet) {
         try {
@@ -79,16 +81,16 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
     }
 
     public boolean handle(StartGamePacket packet) {
-        Map<String, Integer> legacyBlocks = new HashMap<>();
-        for (NbtMap entry : packet.getBlockPalette()) {
-            legacyBlocks.putIfAbsent(entry.getCompound("block").getString("name"), (int) entry.getShort("id"));
-        }
-
-        proxy.saveJson("legacy_block_ids.json", sortMap(legacyBlocks));
-        List<NbtMap> palette = new ArrayList<>(packet.getBlockPalette());
-        palette.sort(Comparator.comparingInt(value -> value.getShort("id")));
-        proxy.saveNBT("runtime_block_states", new NbtList<>(NbtType.COMPOUND, palette));
-        BlockPaletteUtils.convertToJson(proxy, palette);
+//        Map<String, Integer> legacyBlocks = new HashMap<>();
+//        for (NbtMap entry : packet.getBlockPalette()) {
+//            legacyBlocks.putIfAbsent(entry.getCompound("block").getString("name"), (int) entry.getShort("id"));
+//        }
+//
+//        proxy.saveJson("legacy_block_ids.json", sortMap(legacyBlocks));
+//        List<NbtMap> palette = new ArrayList<>(packet.getBlockPalette());
+//        palette.sort(Comparator.comparingInt(value -> value.getShort("id")));
+//        proxy.saveNBT("runtime_block_states", new NbtList<>(NbtType.COMPOUND, palette));
+//        BlockPaletteUtils.convertToJson(proxy, palette);
 
         List<DataEntry> itemData = new ArrayList<>();
         LinkedHashMap<String, Integer> legacyItems = new LinkedHashMap<>();
@@ -98,7 +100,15 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
             if (entry.getId() > 255) {
                 legacyItems.putIfAbsent(entry.getIdentifier(), (int) entry.getId());
             }
+
+            if ("minecraft:shield".equals(entry.getIdentifier())) {
+                session.getHardcodedBlockingId().set(entry.getId());
+            }
+
+            this.itemEntries.put(entry.getId(), entry);
         }
+
+        itemData.sort(Comparator.comparing(o -> o.name));
 
         proxy.saveJson("legacy_item_ids.json", sortMap(legacyItems));
         proxy.saveJson("runtime_item_states.json", itemData);
@@ -123,7 +133,8 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
     private void dumpCreativeItems(ItemData[] contents) {
         List<CreativeItemEntry> entries = new ArrayList<>();
         for (ItemData data : contents) {
-            int id = data.getId();
+            int runtimeId = data.getId();
+            String id = this.itemEntries.get(runtimeId).getIdentifier();
             Integer damage = data.getDamage() == 0 ? null : (int) data.getDamage();
 
             NbtMap tag = data.getTag();
@@ -155,14 +166,14 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
     @Override
     public boolean handle(InventoryContentPacket packet) {
         if (packet.getContainerId() == ContainerId.CREATIVE) {
-            dumpCreativeItems(packet.getContents());
+            dumpCreativeItems(packet.getContents().toArray(new ItemData[0]));
         }
         return false;
     }
 
     private static Map<String, Integer> sortMap(Map<String, Integer> map) {
         List<Map.Entry<String, Integer>> entries = new ArrayList<>(map.entrySet());
-        entries.sort(Map.Entry.comparingByValue());
+        entries.sort(Map.Entry.comparingByKey());
 
         Map<String, Integer> sortedMap = new LinkedHashMap<>();
         for (Map.Entry<String, Integer> entry : entries) {
@@ -174,7 +185,7 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
     @Value
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private static class CreativeItemEntry {
-        private final int id;
+        private final String id;
         private final Integer damage;
         @JsonProperty("nbt_b64")
         private final String nbt;
