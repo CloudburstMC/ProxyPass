@@ -23,6 +23,8 @@ public class RecipeUtils {
 
     public static void writeRecipes(CraftingDataPacket packet, ProxyPass proxy) {
         List<CraftingDataEntry> entries = new ArrayList<>();
+        List<PotionMixDataEntry> potions = new ArrayList<>();
+        List<ContainerMixDataEntry> contaienrs = new ArrayList<>();
 
         for (CraftingData craftingData : packet.getCraftingData()) {
             CraftingDataEntry entry = new CraftingDataEntry();
@@ -44,7 +46,8 @@ public class RecipeUtils {
             if (type == CraftingDataType.SHAPED || type == CraftingDataType.SHAPED_CHEMISTRY) {
 
                 int charCounter = 0;
-                ItemData[] inputs = craftingData.getInputs().toArray(new ItemData[0]);
+                // ItemData[] inputs = craftingData.getInputs().toArray(new ItemData[0]);
+                List<ItemData> inputs = craftingData.getInputs();
                 Map<Item, Character> charItemMap = new HashMap<>();
                 char[][] shape = new char[craftingData.getHeight()][craftingData.getWidth()];
 
@@ -53,7 +56,7 @@ public class RecipeUtils {
                     int index = height * craftingData.getWidth();
                     for (int width = 0; width < craftingData.getWidth(); width++) {
                         int slot = index + width;
-                        Item item = itemFromNetwork(inputs[slot], false);
+                        Item item = itemFromNetwork(inputs.get(slot), false);
 
                         if (item == Item.EMPTY) {
                             continue;
@@ -89,18 +92,36 @@ public class RecipeUtils {
                 Integer damage = craftingData.getInputDamage();
                 if (damage == 0x7fff) damage = -1;
                 if (damage == 0) damage = null;
-                entry.input = new Item(craftingData.getInputId(), damage, null, null);
+                entry.input = new Item(craftingData.getInputId(), ProxyPass.legacyIdMap.get(craftingData.getInputId()), damage, null, null);
                 entry.output = itemFromNetwork(craftingData.getOutputs().get(0), true);
             }
             entries.add(entry);
         }
+        for (PotionMixData potion : packet.getPotionMixData()) {
+            potions.add(new PotionMixDataEntry(
+                    ProxyPass.legacyIdMap.get(potion.getInputId()),
+                    potion.getInputMeta(),
+                    ProxyPass.legacyIdMap.get(potion.getReagentId()),
+                    potion.getReagentMeta(),
+                    ProxyPass.legacyIdMap.get(potion.getOutputId()),
+                    potion.getOutputMeta()
+            ));
+        }
 
-        Recipes recipes = new Recipes(ProxyPass.CODEC.getProtocolVersion(), entries, packet.getPotionMixData(), packet.getContainerMixData());
+        for (ContainerMixData container : packet.getContainerMixData()) {
+            contaienrs.add(new ContainerMixDataEntry(
+                    ProxyPass.legacyIdMap.get(container.getInputId()),
+                    ProxyPass.legacyIdMap.get(container.getReagentId()),
+                    ProxyPass.legacyIdMap.get(container.getOutputId())
+            ));
+        }
+
+        Recipes recipes = new Recipes(ProxyPass.CODEC.getProtocolVersion(), entries, potions, contaienrs);
 
         proxy.saveJson("recipes.json", recipes);
     }
 
-    private static Item[] writeItemArray(ItemData[] inputs, boolean output) {
+    private static List<Item> writeItemArray(ItemData[] inputs, boolean output) {
         List<Item> outputs = new ArrayList<>();
         for (ItemData input : inputs) {
             Item item = itemFromNetwork(input, output);
@@ -108,7 +129,7 @@ public class RecipeUtils {
                 outputs.add(item);
             }
         }
-        return outputs.toArray(new Item[0]);
+        return outputs;
     }
 
     private static String nbtToBase64(NbtMap tag) {
@@ -127,6 +148,7 @@ public class RecipeUtils {
 
     private static Item itemFromNetwork(ItemData data, boolean output) {
         int id = data.getId();
+        String identifier = ProxyPass.legacyIdMap.get(id);
         Integer damage = (int) data.getDamage();
         Integer count = data.getCount();
         String tag = nbtToBase64(data.getTag());
@@ -137,7 +159,7 @@ public class RecipeUtils {
         if (damage == 0 || (damage == -1 && output)) damage = null;
         if (count == 1) count = null;
 
-        return new Item(id, damage, count, tag);
+        return new Item(id, identifier, damage, count, tag);
     }
 
     @NoArgsConstructor
@@ -155,22 +177,44 @@ public class RecipeUtils {
         private Integer priority;
     }
 
+    @AllArgsConstructor
+    @Getter
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private static class PotionMixDataEntry {
+        private String inputId;
+        private int inputMeta;
+        private String reagentId;
+        private int reagentMeta;
+        private String outputId;
+        private int outputMeta;
+    }
+
+    @AllArgsConstructor
+    @Getter
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private static class ContainerMixDataEntry {
+        private String inputId;
+        private String reagentId;
+        private String outputId;
+    }
+
     @Value
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private static class Item {
-        public static final Item EMPTY = new Item(0, null, null, null);
+        public static final Item EMPTY = new Item(0, "minecraft:air", null, null, null);
 
-        private final int id;
-        private final Integer damage;
-        private final Integer count;
-        private final String nbt_b64;
+        int legacyId;
+        String id;
+        Integer damage;
+        Integer count;
+        String nbt_b64;
     }
 
     @Value
     private static class Recipes {
-        private final int version;
-        private final List<CraftingDataEntry> recipes;
-        private final List<PotionMixData> potionMixes;
-        private final List<ContainerMixData> containerMixes;
+        int version;
+        List<CraftingDataEntry> recipes;
+        List<PotionMixDataEntry> potionMixes;
+        List<ContainerMixDataEntry> containerMixes;
     }
 }

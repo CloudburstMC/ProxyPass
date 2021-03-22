@@ -26,9 +26,7 @@ import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
-import java.util.Collections;
-import java.util.IdentityHashMap;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -42,6 +40,7 @@ public class ProxyPass {
     public static final BedrockPacketCodec CODEC = Bedrock_v428.V428_CODEC;
     public static final int PROTOCOL_VERSION = CODEC.getProtocolVersion();
     private static final DefaultPrettyPrinter PRETTY_PRINTER = new DefaultPrettyPrinter();
+    public static Map<Integer, String> legacyIdMap = new HashMap<>();
 
     static {
         DefaultIndenter indenter = new DefaultIndenter("    ", "\n");
