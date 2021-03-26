@@ -24,7 +24,7 @@ public class RecipeUtils {
     public static void writeRecipes(CraftingDataPacket packet, ProxyPass proxy) {
         List<CraftingDataEntry> entries = new ArrayList<>();
         List<PotionMixDataEntry> potions = new ArrayList<>();
-        List<ContainerMixDataEntry> contaienrs = new ArrayList<>();
+        List<ContainerMixDataEntry> containers = new ArrayList<>();
 
         for (CraftingData craftingData : packet.getCraftingData()) {
             CraftingDataEntry entry = new CraftingDataEntry();
@@ -109,14 +109,14 @@ public class RecipeUtils {
         }
 
         for (ContainerMixData container : packet.getContainerMixData()) {
-            contaienrs.add(new ContainerMixDataEntry(
+            containers.add(new ContainerMixDataEntry(
                     ProxyPass.legacyIdMap.get(container.getInputId()),
                     ProxyPass.legacyIdMap.get(container.getReagentId()),
                     ProxyPass.legacyIdMap.get(container.getOutputId())
             ));
         }
 
-        Recipes recipes = new Recipes(ProxyPass.CODEC.getProtocolVersion(), entries, potions, contaienrs);
+        Recipes recipes = new Recipes(ProxyPass.CODEC.getProtocolVersion(), entries, potions, containers);
 
         proxy.saveJson("recipes.json", recipes);
     }
