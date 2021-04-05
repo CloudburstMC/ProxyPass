@@ -160,6 +160,9 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
             downstream.setBatchHandler(proxySession.getDownstreamTailHandler());
             downstream.setLogging(true);
             downstream.setPacketHandler(new DownstreamPacketHandler(downstream, proxySession, this.proxy));
+            downstream.addDisconnectHandler(disconnectReason -> this.session.disconnect());
+            downstream.getHardcodedBlockingId().set(ProxyPass.SHIELD_RUNTIME_ID);
+            this.session.getHardcodedBlockingId().set(ProxyPass.SHIELD_RUNTIME_ID);
 
             log.debug("Downstream connected");
 

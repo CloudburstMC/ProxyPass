@@ -90,6 +90,7 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
             }
 
             if ("minecraft:shield".equals(entry.getIdentifier())) {
+                log.info("Shield runtime ID {}", entry.getId());
                 player.getUpstream().getHardcodedBlockingId().set(entry.getId());
                 player.getDownstream().getHardcodedBlockingId().set(entry.getId());
             }
