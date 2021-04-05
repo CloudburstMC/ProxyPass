@@ -124,6 +124,7 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
             int runtimeId = data.getId();
             String id = this.itemEntries.get(runtimeId).getIdentifier();
             Integer damage = data.getDamage() == 0 ? null : (int) data.getDamage();
+            Integer blockRuntimeId = data.getBlockRuntimeId() == 0 ? null : data.getBlockRuntimeId();
 
             NbtMap tag = data.getTag();
             String tagData = null;
@@ -136,7 +137,7 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
                 }
                 tagData = Base64.getEncoder().encodeToString(byteArrayOutputStream.toByteArray());
             }
-            entries.add(new CreativeItemEntry(id, damage, tagData));
+            entries.add(new CreativeItemEntry(id, damage, blockRuntimeId, tagData));
         }
 
         CreativeItems items = new CreativeItems(entries);
@@ -175,6 +176,7 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
     private static class CreativeItemEntry {
         private final String id;
         private final Integer damage;
+        private final Integer blockRuntimeId;
         @JsonProperty("nbt_b64")
         private final String nbt;
     }
