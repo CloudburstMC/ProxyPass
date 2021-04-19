@@ -4,9 +4,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.nimbusds.jwt.SignedJWT;
 import com.nukkitx.nbt.NBTOutputStream;
-import com.nukkitx.nbt.NbtList;
 import com.nukkitx.nbt.NbtMap;
-import com.nukkitx.nbt.NbtType;
 import com.nukkitx.nbt.util.stream.LittleEndianDataOutputStream;
 import com.nukkitx.protocol.bedrock.BedrockClientSession;
 import com.nukkitx.protocol.bedrock.data.inventory.ContainerId;
@@ -84,7 +82,6 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
         LinkedHashMap<String, Integer> legacyItems = new LinkedHashMap<>();
 
         for (StartGamePacket.ItemEntry entry : packet.getItemEntries()) {
-            itemData.add(new DataEntry(entry.getIdentifier(), entry.getId()));
             if (entry.getId() > 255) {
                 legacyItems.putIfAbsent(entry.getIdentifier(), (int) entry.getId());
             }
@@ -95,7 +92,9 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
                 player.getDownstream().getHardcodedBlockingId().set(entry.getId());
             }
 
+            itemData.add(new DataEntry(entry.getIdentifier(), entry.getId()));
             this.itemEntries.put(entry.getId(), entry);
+            ProxyPass.legacyIdMap.put((int) entry.getId(), entry.getIdentifier());
         }
 
         itemData.sort(Comparator.comparing(o -> o.name));
@@ -109,7 +108,6 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
     @Override
     public boolean handle(CraftingDataPacket packet) {
         RecipeUtils.writeRecipes(packet, this.proxy);
-
         return false;
     }
 
