@@ -1,7 +1,9 @@
 package com.nukkitx.proxypass.network.bedrock.session;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectWriter;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.JsonNodeType;
 import com.google.common.base.Preconditions;
@@ -22,6 +24,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import net.minidev.json.JSONObject;
 
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.security.interfaces.ECPublicKey;
 import java.util.UUID;
@@ -99,6 +102,7 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
             JWSObject jwt = JWSObject.parse(certChainData.get(certChainData.size() - 1).asText());
             JsonNode payload = ProxyPass.JSON_MAPPER.readTree(jwt.getPayload().toBytes());
 
+
             if (payload.get("extraData").getNodeType() != JsonNodeType.OBJECT) {
                 throw new RuntimeException("AuthData was not found!");
             }
@@ -115,8 +119,16 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
 
             JWSObject clientJwt = JWSObject.parse(packet.getSkinData().toString());
             verifyJwt(clientJwt, identityPublicKey);
-            skinData = clientJwt.getPayload().toJSONObject();
 
+            skinData = clientJwt.getPayload().toJSONObject();
+            try {
+                ObjectWriter jsonout = ProxyPass.JSON_MAPPER.writer(new DefaultPrettyPrinter());
+                jsonout.writeValue(new FileOutputStream(player.getLogPath().resolve("chainData.json").toFile()), payload);
+                jsonout.writeValue(new FileOutputStream(player.getLogPath().resolve("skinData.json").toFile()), skinData);
+                log.debug(skinData.toJSONString());
+            } catch (Exception e) {
+                log.error("JSON output error: " + e.getMessage(), e);
+            }
             initializeProxySession();
         } catch (Exception e) {
             session.disconnect("disconnectionScreen.internalError.cantConnect");
@@ -137,7 +149,7 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
             downstream.setPacketCodec(ProxyPass.CODEC);
             ProxyPlayerSession proxySession = new ProxyPlayerSession(this.session, downstream, this.proxy, this.authData);
             this.player = proxySession;
-
+            downstream.getHardcodedBlockingId().set(355);
             SignedJWT authData = ForgeryUtils.forgeAuthData(proxySession.getProxyKeyPair(), extraData);
             JWSObject skinData = ForgeryUtils.forgeSkinData(proxySession.getProxyKeyPair(), this.skinData);
             chainData.remove(chainData.size() - 1);
@@ -160,6 +172,9 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
             downstream.setBatchHandler(proxySession.getDownstreamTailHandler());
             downstream.setLogging(true);
             downstream.setPacketHandler(new DownstreamPacketHandler(downstream, proxySession, this.proxy));
+            downstream.addDisconnectHandler(disconnectReason -> this.session.disconnect());
+            downstream.getHardcodedBlockingId().set(ProxyPass.SHIELD_RUNTIME_ID);
+            this.session.getHardcodedBlockingId().set(ProxyPass.SHIELD_RUNTIME_ID);
 
             log.debug("Downstream connected");
 
