@@ -121,14 +121,6 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
             verifyJwt(clientJwt, identityPublicKey);
 
             skinData = clientJwt.getPayload().toJSONObject();
-            try {
-                ObjectWriter jsonout = ProxyPass.JSON_MAPPER.writer(new DefaultPrettyPrinter());
-                jsonout.writeValue(new FileOutputStream(player.getLogPath().resolve("chainData.json").toFile()), payload);
-                jsonout.writeValue(new FileOutputStream(player.getLogPath().resolve("skinData.json").toFile()), skinData);
-                log.debug(skinData.toJSONString());
-            } catch (Exception e) {
-                log.error("JSON output error: " + e.getMessage(), e);
-            }
             initializeProxySession();
         } catch (Exception e) {
             session.disconnect("disconnectionScreen.internalError.cantConnect");
