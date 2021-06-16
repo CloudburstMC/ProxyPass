@@ -67,23 +67,23 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
     }
 
     public boolean handle(StartGamePacket packet) {
-//        Map<String, Integer> legacyBlocks = new HashMap<>();
-//        for (NbtMap entry : packet.getBlockPalette()) {
-//            legacyBlocks.putIfAbsent(entry.getCompound("block").getString("name"), (int) entry.getShort("id"));
-//        }
-//
-//        proxy.saveJson("legacy_block_ids.json", sortMap(legacyBlocks));
-//        List<NbtMap> palette = new ArrayList<>(packet.getBlockPalette());
-//        palette.sort(Comparator.comparingInt(value -> value.getShort("id")));
-//        proxy.saveNBT("runtime_block_states", new NbtList<>(NbtType.COMPOUND, palette));
-//        BlockPaletteUtils.convertToJson(proxy, palette);
-
         List<DataEntry> itemData = new ArrayList<>();
         LinkedHashMap<String, Integer> legacyItems = new LinkedHashMap<>();
+        LinkedHashMap<String, Integer> legacyBlocks = new LinkedHashMap<>();
 
         for (StartGamePacket.ItemEntry entry : packet.getItemEntries()) {
             if (entry.getId() > 255) {
                 legacyItems.putIfAbsent(entry.getIdentifier(), (int) entry.getId());
+            } else {
+                String id = entry.getIdentifier();
+                if (id.contains(":item.")) {
+                    id = id.replace(":item.", ":");
+                }
+                if (entry.getId() > 0) {
+                    legacyBlocks.putIfAbsent(id, (int) entry.getId());
+                } else {
+                    legacyBlocks.putIfAbsent(id, 255 - entry.getId());
+                }
             }
 
             if ("minecraft:shield".equals(entry.getIdentifier())) {
@@ -99,6 +99,7 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
 
         itemData.sort(Comparator.comparing(o -> o.name));
 
+        proxy.saveJson("legacy_block_ids.json", sortMap(legacyBlocks));
         proxy.saveJson("legacy_item_ids.json", sortMap(legacyItems));
         proxy.saveJson("runtime_item_states.json", itemData);
 
