@@ -14,6 +14,8 @@ import com.nukkitx.protocol.bedrock.packet.*;
 import com.nukkitx.protocol.bedrock.util.EncryptionUtils;
 import com.nukkitx.proxypass.ProxyPass;
 import com.nukkitx.proxypass.network.bedrock.util.RecipeUtils;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import lombok.RequiredArgsConstructor;
@@ -23,7 +25,11 @@ import lombok.extern.log4j.Log4j2;
 import javax.crypto.SecretKey;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.net.URI;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.interfaces.ECPublicKey;
@@ -149,6 +155,19 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
     @Override
     public boolean handle(CreativeContentPacket packet) {
         dumpCreativeItems(packet.getContents());
+
+        Path path = proxy.getDataDir().resolve("creative_contents.dat");
+        ByteBuf buffer = ByteBufAllocator.DEFAULT.ioBuffer();
+        try {
+            ProxyPass.CODEC.tryEncode(buffer, packet, session);
+            try (OutputStream out = Files.newOutputStream(path, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE)){
+                buffer.readBytes(out, buffer.readableBytes());
+            } catch (IOException e) {
+                throw new IllegalStateException(e);
+            }
+        } finally {
+            buffer.release();
+        }
         return false;
     }
 
