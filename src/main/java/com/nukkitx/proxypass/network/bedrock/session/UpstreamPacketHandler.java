@@ -10,6 +10,7 @@ import com.google.common.base.Preconditions;
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSObject;
 import com.nimbusds.jose.crypto.factories.DefaultJWSVerifierFactory;
+import com.nimbusds.jose.shaded.json.JSONObject;
 import com.nimbusds.jwt.SignedJWT;
 import com.nukkitx.protocol.bedrock.BedrockClient;
 import com.nukkitx.protocol.bedrock.BedrockServerSession;
@@ -22,7 +23,6 @@ import com.nukkitx.proxypass.network.bedrock.util.ForgeryUtils;
 import io.netty.util.AsciiString;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
-import net.minidev.json.JSONObject;
 
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -119,7 +119,7 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
             JWSObject clientJwt = JWSObject.parse(packet.getSkinData().toString());
             verifyJwt(clientJwt, identityPublicKey);
 
-            skinData = clientJwt.getPayload().toJSONObject();
+            skinData = new JSONObject(clientJwt.getPayload().toJSONObject());
             initializeProxySession();
         } catch (Exception e) {
             session.disconnect("disconnectionScreen.internalError.cantConnect");

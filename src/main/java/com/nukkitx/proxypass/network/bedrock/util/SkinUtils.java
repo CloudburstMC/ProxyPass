@@ -1,7 +1,7 @@
 package com.nukkitx.proxypass.network.bedrock.util;
 
+import com.nimbusds.jose.shaded.json.JSONObject;
 import com.nukkitx.proxypass.network.bedrock.session.ProxyPlayerSession;
-import net.minidev.json.JSONObject;
 
 import javax.imageio.ImageIO;
 import java.awt.*;

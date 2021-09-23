@@ -1,11 +1,11 @@
 package com.nukkitx.proxypass.network.bedrock.util;
 
 import com.nimbusds.jose.*;
+import com.nimbusds.jose.shaded.json.JSONObject;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import com.nukkitx.protocol.bedrock.util.EncryptionUtils;
 import lombok.experimental.UtilityClass;
-import net.minidev.json.JSONObject;
 
 import java.net.URI;
 import java.security.KeyPair;
