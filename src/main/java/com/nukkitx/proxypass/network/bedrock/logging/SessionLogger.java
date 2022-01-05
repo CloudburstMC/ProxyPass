@@ -86,11 +86,30 @@ public class SessionLogger {
         }
     }
 
-    public void log(Supplier<String> supplier) {
-        if (proxy.getConfiguration().isLoggingPackets()) {
-            synchronized (logBuffer) {
-                logBuffer.addLast(supplier.get());
+    public void logPacket(BedrockSession session, BedrockPacket packet, boolean upstream) {
+        String logPrefix = getLogPrefix(upstream);
+        if (!proxy.isIgnoredPacket(packet.getClass())) {
+            if (session.isLogging() && log.isTraceEnabled()) {
+                log.trace(logPrefix + " {}: {}", session.getAddress(), packet);
             }
+
+            if (proxy.getConfiguration().isLoggingPackets()) {
+                logToBuffer(() -> logPrefix + packet.toString());
+            }
+
+            if (proxy.getConfiguration().isLoggingPackets() && proxy.getConfiguration().getLogTo().logToConsole) {
+                System.out.println(logPrefix + packet.toString());
+            }
+        }
+    }
+
+    private String getLogPrefix(boolean upstream) {
+        return upstream ? "[SERVER BOUND]  -  " : "[CLIENT BOUND]  -  ";
+    }
+
+    private void logToBuffer(Supplier<String> supplier) {
+        synchronized (logBuffer) {
+            logBuffer.addLast(supplier.get());
         }
     }
 
@@ -105,23 +124,6 @@ public class SessionLogger {
                 log.error("Unable to flush packet log", e);
             }
         }
-    }
-
-    public void logPacket(BedrockSession session, BedrockPacket packet, boolean upstream) {
-        String logPrefix = getLogPrefix(upstream);
-        if (!proxy.isIgnoredPacket(packet.getClass())) {
-            if (session.isLogging() && log.isTraceEnabled()) {
-                log.trace(logPrefix + " {}: {}", session.getAddress(), packet);
-            }
-            log(() -> logPrefix + packet.toString());
-            if (proxy.getConfiguration().isLoggingPackets() && proxy.getConfiguration().getLogTo().logToConsole) {
-                System.out.println(logPrefix + packet.toString());
-            }
-        }
-    }
-
-    private String getLogPrefix(boolean upstream) {
-        return upstream ? "[SERVER BOUND]  -  " : "[CLIENT BOUND]  -  ";
     }
 
 }
