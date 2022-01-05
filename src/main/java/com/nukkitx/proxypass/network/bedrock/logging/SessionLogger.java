@@ -42,14 +42,19 @@ public class SessionLogger {
         this.proxy = proxy;
         this.dataPath = sessionsDir.resolve(displayName + '-' + timestamp);
         this.logPath = dataPath.resolve("packets.log");
+    }
 
-        if (proxy.getConfiguration().isLoggingPackets() && proxy.getConfiguration().getLogTo().logToFile) {
-            log.debug("Packets will be logged under " + logPath.toString());
-            try {
-                Files.createDirectories(dataPath);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
+    public void start(ProxyPass proxy) {
+        if (proxy.getConfiguration().isLoggingPackets()){
+            if (proxy.getConfiguration().getLogTo().logToFile) {
+                log.debug("Packets will be logged under " + logPath.toString());
+                try {
+                    Files.createDirectories(dataPath);
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
             }
+            executor.scheduleAtFixedRate(this::flushLogBuffer, 5, 5, TimeUnit.SECONDS);
         }
     }
 
@@ -99,12 +104,6 @@ public class SessionLogger {
             } catch (IOException e) {
                 log.error("Unable to flush packet log", e);
             }
-        }
-    }
-
-    public void start(ProxyPass proxy) {
-        if (proxy.getConfiguration().isLoggingPackets()) {
-            executor.scheduleAtFixedRate(this::flushLogBuffer, 5, 5, TimeUnit.SECONDS);
         }
     }
 

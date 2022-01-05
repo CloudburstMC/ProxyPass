@@ -40,17 +40,17 @@ public class ProxyPlayerSession {
         this.downstream = downstream;
         this.proxy = proxy;
         this.authData = authData;
+        this.upstream.addDisconnectHandler(reason -> {
+            if (reason != DisconnectReason.DISCONNECTED) {
+                this.downstream.disconnect();
+            }
+        });
         this.logger = new SessionLogger(
                 proxy,
                 proxy.getSessionsDir(),
                 this.authData.getDisplayName(),
                 timestamp
         );
-        this.upstream.addDisconnectHandler(reason -> {
-            if (reason != DisconnectReason.DISCONNECTED) {
-                this.downstream.disconnect();
-            }
-        });
         logger.start(proxy);
     }
 
