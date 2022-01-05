@@ -18,13 +18,8 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.extern.log4j.Log4j2;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.StandardOpenOption;
 import java.security.KeyPair;
 import java.util.*;
-import java.util.concurrent.TimeUnit;
-import java.util.function.Supplier;
 
 @Log4j2
 @Getter
@@ -36,74 +31,46 @@ public class ProxyPlayerSession {
     private final long timestamp = System.currentTimeMillis();
     @Getter(AccessLevel.PACKAGE)
     private final KeyPair proxyKeyPair = EncryptionUtils.createKeyPair();
-    private final Deque<String> logBuffer = new ArrayDeque<>();
     private volatile boolean closed = false;
 
     public final PacketLogger logger;
-
-
 
     public ProxyPlayerSession(BedrockServerSession upstream, BedrockClientSession downstream, ProxyPass proxy, AuthData authData) {
         this.upstream = upstream;
         this.downstream = downstream;
         this.proxy = proxy;
         this.authData = authData;
-        this.logger = new PacketLogger(proxy.getSessionsDir(), this.authData.getDisplayName(), timestamp);
-        if (proxy.getConfiguration().isLoggingPackets() &&
-                proxy.getConfiguration().getLogTo().logToFile) {
-            log.debug("Packets will be logged under " + logger.getLogPath().toString());
-            try {
-                Files.createDirectories(logger.getDataPath());
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        }
+        this.logger = new PacketLogger(
+                proxy,
+                proxy.getSessionsDir(),
+                this.authData.getDisplayName(),
+                timestamp
+        );
         this.upstream.addDisconnectHandler(reason -> {
             if (reason != DisconnectReason.DISCONNECTED) {
                 this.downstream.disconnect();
             }
         });
-        if (proxy.getConfiguration().isLoggingPackets()) {
-            PacketLogger.executor.scheduleAtFixedRate(this::flushLogBuffer, 5, 5, TimeUnit.SECONDS);
-        }
+        logger.start(proxy);
     }
 
     public BatchHandler getUpstreamBatchHandler() {
-        return new ProxyBatchHandler(downstream, true);
+        return new ProxyBatchHandler(downstream, logger, true);
     }
 
     public BatchHandler getDownstreamTailHandler() {
-        return new ProxyBatchHandler(upstream, false);
-    }
-
-    private void log(Supplier<String> supplier) {
-        if (proxy.getConfiguration().isLoggingPackets()) {
-            synchronized (logBuffer) {
-                logBuffer.addLast(supplier.get());
-            }
-        }
-    }
-
-    private void flushLogBuffer() {
-        synchronized (logBuffer) {
-            try {
-                if (proxy.getConfiguration().getLogTo().logToFile) {
-                    Files.write(logger.getLogPath(), logBuffer, StandardOpenOption.APPEND, StandardOpenOption.CREATE);
-                }
-                logBuffer.clear();
-            } catch (IOException e) {
-                log.error("Unable to flush packet log", e);
-            }
-        }
+        return new ProxyBatchHandler(upstream, logger, false);
     }
 
     private class ProxyBatchHandler implements BatchHandler {
+        private final PacketLogger logger;
         private final BedrockSession session;
-        private final String logPrefix;
+        private final boolean upstream;
 
-        private ProxyBatchHandler(BedrockSession session, boolean upstream) {
+        private ProxyBatchHandler(BedrockSession session, PacketLogger logger, boolean upstream) {
             this.session = session;
-            this.logPrefix = upstream ? "[SERVER BOUND]  -  " : "[CLIENT BOUND]  -  ";
+            this.logger = logger;
+            this.upstream = upstream;
         }
 
         @Override
@@ -111,17 +78,9 @@ public class ProxyPlayerSession {
             boolean packetTesting = ProxyPlayerSession.this.proxy.getConfiguration().isPacketTesting();
             boolean batchHandled = false;
             List<BedrockPacket> unhandled = new ArrayList<>();
+
             for (BedrockPacket packet : packets) {
-                if (!proxy.isIgnoredPacket(packet.getClass())) {
-                    if (session.isLogging() && log.isTraceEnabled()) {
-                        log.trace(this.logPrefix + " {}: {}", session.getAddress(), packet);
-                    }
-                    ProxyPlayerSession.this.log(() -> logPrefix + packet.toString());
-                    if (proxy.getConfiguration().isLoggingPackets() &&
-                            proxy.getConfiguration().getLogTo().logToConsole) {
-                        System.out.println(logPrefix + packet.toString());
-                    }
-                }
+                logger.logPacket(session, packet, upstream);
 
                 BedrockPacketHandler handler = session.getPacketHandler();
 
@@ -157,5 +116,7 @@ public class ProxyPlayerSession {
                 this.session.sendWrapped(unhandled, true);
             }
         }
+
     }
+
 }
