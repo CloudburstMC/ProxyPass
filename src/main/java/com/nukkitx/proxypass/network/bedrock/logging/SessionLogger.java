@@ -44,7 +44,7 @@ public class SessionLogger {
         this.logPath = dataPath.resolve("packets.log");
     }
 
-    public void start(ProxyPass proxy) {
+    public void start() {
         if (proxy.getConfiguration().isLoggingPackets()){
             if (proxy.getConfiguration().getLogTo().logToFile) {
                 log.debug("Packets will be logged under " + logPath.toString());

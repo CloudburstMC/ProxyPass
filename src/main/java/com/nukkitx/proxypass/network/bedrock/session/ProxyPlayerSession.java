@@ -51,7 +51,7 @@ public class ProxyPlayerSession {
                 this.authData.getDisplayName(),
                 timestamp
         );
-        logger.start(proxy);
+        logger.start();
     }
 
     public BatchHandler getUpstreamBatchHandler() {
