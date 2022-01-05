@@ -11,6 +11,7 @@ import com.nukkitx.protocol.bedrock.handler.BedrockPacketHandler;
 import com.nukkitx.protocol.bedrock.packet.UnknownPacket;
 import com.nukkitx.protocol.bedrock.util.EncryptionUtils;
 import com.nukkitx.proxypass.ProxyPass;
+import com.nukkitx.proxypass.network.bedrock.logging.PacketLogger;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import lombok.AccessLevel;
@@ -19,43 +20,40 @@ import lombok.extern.log4j.Log4j2;
 
 import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.security.KeyPair;
 import java.util.*;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
 @Log4j2
 @Getter
 public class ProxyPlayerSession {
-    private static final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
     private final BedrockServerSession upstream;
     private final BedrockClientSession downstream;
     private final ProxyPass proxy;
     private final AuthData authData;
-    private final Path dataPath;
-    private final Path logPath;
     private final long timestamp = System.currentTimeMillis();
     @Getter(AccessLevel.PACKAGE)
     private final KeyPair proxyKeyPair = EncryptionUtils.createKeyPair();
     private final Deque<String> logBuffer = new ArrayDeque<>();
     private volatile boolean closed = false;
 
+    public final PacketLogger logger;
+
+
+
     public ProxyPlayerSession(BedrockServerSession upstream, BedrockClientSession downstream, ProxyPass proxy, AuthData authData) {
         this.upstream = upstream;
         this.downstream = downstream;
         this.proxy = proxy;
         this.authData = authData;
-        this.dataPath = proxy.getSessionsDir().resolve(this.authData.getDisplayName() + '-' + timestamp);
-        this.logPath = dataPath.resolve("packets.log");
+        this.logger = new PacketLogger(proxy.getSessionsDir(), this.authData.getDisplayName(), timestamp);
         if (proxy.getConfiguration().isLoggingPackets() &&
                 proxy.getConfiguration().getLogTo().logToFile) {
-            log.debug("Packets will be logged under " + logPath.toString());
+            log.debug("Packets will be logged under " + logger.getLogPath().toString());
             try {
-                Files.createDirectories(dataPath);
+                Files.createDirectories(logger.getDataPath());
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
@@ -66,7 +64,7 @@ public class ProxyPlayerSession {
             }
         });
         if (proxy.getConfiguration().isLoggingPackets()) {
-            executor.scheduleAtFixedRate(this::flushLogBuffer, 5, 5, TimeUnit.SECONDS);
+            PacketLogger.executor.scheduleAtFixedRate(this::flushLogBuffer, 5, 5, TimeUnit.SECONDS);
         }
     }
 
@@ -90,7 +88,7 @@ public class ProxyPlayerSession {
         synchronized (logBuffer) {
             try {
                 if (proxy.getConfiguration().getLogTo().logToFile) {
-                    Files.write(logPath, logBuffer, StandardOpenOption.APPEND, StandardOpenOption.CREATE);
+                    Files.write(logger.getLogPath(), logBuffer, StandardOpenOption.APPEND, StandardOpenOption.CREATE);
                 }
                 logBuffer.clear();
             } catch (IOException e) {

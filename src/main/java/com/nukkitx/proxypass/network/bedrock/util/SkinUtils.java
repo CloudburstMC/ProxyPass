@@ -47,7 +47,7 @@ public class SkinUtils {
 
         saveImage(session, 64, 32, cape, "cape");
 
-        Path geometryPath = session.getDataPath().resolve("geometry.json");
+        Path geometryPath = session.logger.getDataPath().resolve("geometry.json");
         byte[] geometry = Base64.getDecoder().decode(skinData.getAsString("SkinGeometry"));
         try {
             Files.write(geometryPath, geometry, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
@@ -68,7 +68,7 @@ public class SkinUtils {
             }
         }
 
-        Path path = session.getDataPath().resolve(name + ".png");
+        Path path = session.logger.getDataPath().resolve(name + ".png");
         try (OutputStream stream = Files.newOutputStream(path, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)) {
             ImageIO.write(image, "png", stream);
         } catch (IOException e) {
