@@ -2,11 +2,14 @@ package com.nukkitx.proxypass.network.bedrock.logging;
 
 import com.nukkitx.protocol.bedrock.BedrockPacket;
 import com.nukkitx.protocol.bedrock.BedrockSession;
-import com.nukkitx.proxypass.Configuration;
 import com.nukkitx.proxypass.ProxyPass;
+import com.nukkitx.proxypass.network.bedrock.session.ProxyPlayerSession;
 import lombok.extern.log4j.Log4j2;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;

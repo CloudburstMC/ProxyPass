@@ -146,7 +146,7 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
                 JsonNode payload = ProxyPass.JSON_MAPPER.readTree(jwt.getPayload().toBytes());
                 ObjectWriter jsonout = ProxyPass.JSON_MAPPER.writer(new DefaultPrettyPrinter());
                 jsonout.writeValue(new FileOutputStream(player.logger.getLogPath().getParent().resolve("chainData.json").toFile()), payload);
-                jsonout.writeValue(new FileOutputStream(player.logger.getLogPath().getParent().resolve("skinData.json").toFile()), skinData);
+                jsonout.writeValue(new FileOutputStream(player.getLogger().getLogPath().getParent().resolve("skinData.json").toFile()), skinData);
             } catch (Exception e) {
                 log.error("JSON output error: " + e.getMessage(), e);
             }
