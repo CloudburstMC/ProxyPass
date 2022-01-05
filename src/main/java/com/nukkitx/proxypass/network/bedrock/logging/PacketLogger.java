@@ -1,13 +1,17 @@
 package com.nukkitx.proxypass.network.bedrock.logging;
 
+import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectWriter;
+import com.nimbusds.jose.shaded.json.JSONObject;
 import com.nukkitx.protocol.bedrock.BedrockPacket;
 import com.nukkitx.protocol.bedrock.BedrockSession;
 import com.nukkitx.proxypass.ProxyPass;
-import com.nukkitx.proxypass.network.bedrock.session.ProxyPlayerSession;
 import lombok.extern.log4j.Log4j2;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.file.Files;
@@ -24,7 +28,7 @@ import java.util.function.Supplier;
 @Log4j2
 public class PacketLogger {
 
-    public static final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
+    private static final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
 
     private final ProxyPass proxy;
 
@@ -40,42 +44,58 @@ public class PacketLogger {
         this.logPath = dataPath.resolve("packets.log");
 
         if (proxy.getConfiguration().isLoggingPackets() && proxy.getConfiguration().getLogTo().logToFile) {
-            log.debug("Packets will be logged under " + getLogPath().toString());
+            log.debug("Packets will be logged under " + logPath.toString());
             try {
-                Files.createDirectories(getDataPath());
+                Files.createDirectories(dataPath);
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
         }
     }
 
-    public Path getDataPath() {
-        return dataPath;
+    public void saveImage(String name, BufferedImage image) {
+        Path path = dataPath.resolve(name + ".png");
+        try (OutputStream stream = Files.newOutputStream(path, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)) {
+            ImageIO.write(image, "png", stream);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
-    public Path getLogPath() {
-        return logPath;
+    public void saveJson(String name, JSONObject object) throws IOException {
+        ObjectWriter jsonout = ProxyPass.JSON_MAPPER.writer(new DefaultPrettyPrinter());
+        jsonout.writeValue(new FileOutputStream(logPath.getParent().resolve(name + ".json").toFile()), object);
     }
 
-    public Deque<String> getLogBuffer() {
-        return logBuffer;
+    public void saveJson(String name, JsonNode node) throws IOException {
+        ObjectWriter jsonout = ProxyPass.JSON_MAPPER.writer(new DefaultPrettyPrinter());
+        jsonout.writeValue(new FileOutputStream(logPath.getParent().resolve(name + ".json").toFile()), node);
+    }
+
+    public void saveJson(String name, byte[] encodedJsonString) {
+        Path geometryPath = dataPath.resolve(name +".json");
+        try {
+            Files.write(geometryPath, encodedJsonString, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public void log(Supplier<String> supplier) {
         if (proxy.getConfiguration().isLoggingPackets()) {
-            synchronized (getLogBuffer()) {
-                getLogBuffer().addLast(supplier.get());
+            synchronized (logBuffer) {
+                logBuffer.addLast(supplier.get());
             }
         }
     }
 
     private void flushLogBuffer() {
-        synchronized (getLogBuffer()) {
+        synchronized (logBuffer) {
             try {
                 if (proxy.getConfiguration().getLogTo().logToFile) {
-                    Files.write(getLogPath(), getLogBuffer(), StandardOpenOption.APPEND, StandardOpenOption.CREATE);
+                    Files.write(logPath, logBuffer, StandardOpenOption.APPEND, StandardOpenOption.CREATE);
                 }
-                getLogBuffer().clear();
+                logBuffer.clear();
             } catch (IOException e) {
                 log.error("Unable to flush packet log", e);
             }
