@@ -1,9 +1,7 @@
 package com.nukkitx.proxypass.network.bedrock.session;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectWriter;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.JsonNodeType;
 import com.google.common.base.Preconditions;
@@ -24,7 +22,6 @@ import io.netty.util.AsciiString;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.security.interfaces.ECPublicKey;
 import java.util.UUID;
@@ -144,9 +141,8 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
             try {
                 JWSObject jwt = JWSObject.parse(chainData.get(chainData.size() - 1).asText());
                 JsonNode payload = ProxyPass.JSON_MAPPER.readTree(jwt.getPayload().toBytes());
-                ObjectWriter jsonout = ProxyPass.JSON_MAPPER.writer(new DefaultPrettyPrinter());
-                jsonout.writeValue(new FileOutputStream(player.getLogPath().getParent().resolve("chainData.json").toFile()), payload);
-                jsonout.writeValue(new FileOutputStream(player.getLogPath().getParent().resolve("skinData.json").toFile()), skinData);
+                player.getLogger().saveJson("chainData", payload);
+                player.getLogger().saveJson("skinData", this.skinData);
             } catch (Exception e) {
                 log.error("JSON output error: " + e.getMessage(), e);
             }
@@ -181,4 +177,5 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
             //SkinUtils.saveSkin(proxySession, this.skinData);
         });
     }
+
 }

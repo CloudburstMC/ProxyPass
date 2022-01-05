@@ -3,15 +3,9 @@ package com.nukkitx.proxypass.network.bedrock.util;
 import com.nimbusds.jose.shaded.json.JSONObject;
 import com.nukkitx.proxypass.network.bedrock.session.ProxyPlayerSession;
 
-import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
 import java.util.Base64;
 
 public class SkinUtils {
@@ -44,16 +38,10 @@ public class SkinUtils {
         saveImage(session, width, height, skin, "skin");
 
         byte[] cape = Base64.getDecoder().decode(skinData.getAsString("CapeData"));
-
         saveImage(session, 64, 32, cape, "cape");
 
-        Path geometryPath = session.getDataPath().resolve("geometry.json");
         byte[] geometry = Base64.getDecoder().decode(skinData.getAsString("SkinGeometry"));
-        try {
-            Files.write(geometryPath, geometry, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        session.getLogger().saveJson("geometry", geometry);
     }
 
     private static void saveImage(ProxyPlayerSession session, int width, int height, byte[] bytes, String name) {
@@ -68,11 +56,7 @@ public class SkinUtils {
             }
         }
 
-        Path path = session.getDataPath().resolve(name + ".png");
-        try (OutputStream stream = Files.newOutputStream(path, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)) {
-            ImageIO.write(image, "png", stream);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        session.getLogger().saveImage(name, image);
     }
+
 }
