@@ -26,7 +26,7 @@ import java.util.function.Supplier;
 
 
 @Log4j2
-public class PacketLogger {
+public class SessionLogger {
 
     private static final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
 
@@ -38,7 +38,7 @@ public class PacketLogger {
 
     private final Deque<String> logBuffer = new ArrayDeque<>();
 
-    public PacketLogger(ProxyPass proxy, Path sessionsDir, String displayName, long timestamp) {
+    public SessionLogger(ProxyPass proxy, Path sessionsDir, String displayName, long timestamp) {
         this.proxy = proxy;
         this.dataPath = sessionsDir.resolve(displayName + '-' + timestamp);
         this.logPath = dataPath.resolve("packets.log");

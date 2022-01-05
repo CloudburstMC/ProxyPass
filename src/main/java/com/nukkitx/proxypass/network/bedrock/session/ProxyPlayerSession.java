@@ -11,7 +11,7 @@ import com.nukkitx.protocol.bedrock.handler.BedrockPacketHandler;
 import com.nukkitx.protocol.bedrock.packet.UnknownPacket;
 import com.nukkitx.protocol.bedrock.util.EncryptionUtils;
 import com.nukkitx.proxypass.ProxyPass;
-import com.nukkitx.proxypass.network.bedrock.logging.PacketLogger;
+import com.nukkitx.proxypass.network.bedrock.logging.SessionLogger;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import lombok.AccessLevel;
@@ -33,14 +33,14 @@ public class ProxyPlayerSession {
     private final KeyPair proxyKeyPair = EncryptionUtils.createKeyPair();
     private volatile boolean closed = false;
 
-    public final PacketLogger logger;
+    public final SessionLogger logger;
 
     public ProxyPlayerSession(BedrockServerSession upstream, BedrockClientSession downstream, ProxyPass proxy, AuthData authData) {
         this.upstream = upstream;
         this.downstream = downstream;
         this.proxy = proxy;
         this.authData = authData;
-        this.logger = new PacketLogger(
+        this.logger = new SessionLogger(
                 proxy,
                 proxy.getSessionsDir(),
                 this.authData.getDisplayName(),
@@ -63,11 +63,11 @@ public class ProxyPlayerSession {
     }
 
     private class ProxyBatchHandler implements BatchHandler {
-        private final PacketLogger logger;
+        private final SessionLogger logger;
         private final BedrockSession session;
         private final boolean upstream;
 
-        private ProxyBatchHandler(BedrockSession session, PacketLogger logger, boolean upstream) {
+        private ProxyBatchHandler(BedrockSession session, SessionLogger logger, boolean upstream) {
             this.session = session;
             this.logger = logger;
             this.upstream = upstream;
