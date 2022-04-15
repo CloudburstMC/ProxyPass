@@ -16,6 +16,7 @@ import com.nukkitx.protocol.bedrock.BedrockServer;
 import com.nukkitx.protocol.bedrock.v471.Bedrock_v471;
 import com.nukkitx.protocol.bedrock.v475.Bedrock_v475;
 import com.nukkitx.protocol.bedrock.v486.Bedrock_v486;
+import com.nukkitx.protocol.bedrock.v503.Bedrock_v503;
 import com.nukkitx.proxypass.network.ProxyBedrockEventHandler;
 import io.netty.util.ResourceLeakDetector;
 import lombok.AccessLevel;
@@ -39,7 +40,7 @@ public class ProxyPass {
     public static final ObjectMapper JSON_MAPPER = new ObjectMapper().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
     public static final YAMLMapper YAML_MAPPER = (YAMLMapper) new YAMLMapper().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
     public static final String MINECRAFT_VERSION;
-    public static final BedrockPacketCodec CODEC = Bedrock_v486.V486_CODEC;
+    public static final BedrockPacketCodec CODEC = Bedrock_v503.V503_CODEC;
     public static final int PROTOCOL_VERSION = CODEC.getProtocolVersion();
     private static final DefaultPrettyPrinter PRETTY_PRINTER = new DefaultPrettyPrinter();
     public static Map<Integer, String> legacyIdMap = new HashMap<>();
