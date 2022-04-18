@@ -4,7 +4,9 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.nimbusds.jwt.SignedJWT;
 import com.nukkitx.nbt.NBTOutputStream;
+import com.nukkitx.nbt.NbtList;
 import com.nukkitx.nbt.NbtMap;
+import com.nukkitx.nbt.NbtType;
 import com.nukkitx.nbt.util.stream.LittleEndianDataOutputStream;
 import com.nukkitx.protocol.bedrock.BedrockClientSession;
 import com.nukkitx.protocol.bedrock.data.inventory.ContainerId;
@@ -126,6 +128,16 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
     }
 
     private void dumpCreativeItems(ItemData[] contents) {
+        // Load up block palette for conversion, if we can find it.
+        Object object = proxy.loadGzipNBT("block_palette.nbt");
+        List<NbtMap> paletteTags = null;
+        if (object instanceof NbtMap) {
+            NbtMap map = (NbtMap) object;
+            paletteTags = map.getList("blocks", NbtType.COMPOUND);
+        } else {
+            log.warn("Failed to load block palette for creative content dump. Output will contain block runtime IDs!");
+        }
+
         List<CreativeItemEntry> entries = new ArrayList<>();
         for (ItemData data : contents) {
             int runtimeId = data.getId();
@@ -137,20 +149,21 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
             }
             String id = entry.getIdentifier();
             Integer damage = data.getDamage() == 0 ? null : (int) data.getDamage();
-            Integer blockRuntimeId = data.getBlockRuntimeId() == 0 ? null : data.getBlockRuntimeId();
+
+            String blockTag = null;
+            Integer blockRuntimeId = null;
+            if (data.getBlockRuntimeId() != 0 && paletteTags != null) {
+                blockTag = encodeNbtToString(paletteTags.get(data.getBlockRuntimeId()));
+            } else if (data.getBlockRuntimeId() != 0) {
+                blockRuntimeId = data.getBlockRuntimeId();
+            }
 
             NbtMap tag = data.getTag();
             String tagData = null;
             if (tag != null) {
-                ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-                try (NBTOutputStream stream = new NBTOutputStream(new LittleEndianDataOutputStream(byteArrayOutputStream))) {
-                    stream.writeTag(tag);
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-                tagData = Base64.getEncoder().encodeToString(byteArrayOutputStream.toByteArray());
+                tagData = encodeNbtToString(tag);
             }
-            entries.add(new CreativeItemEntry(id, damage, blockRuntimeId, tagData));
+            entries.add(new CreativeItemEntry(id, damage, blockRuntimeId, blockTag, tagData));
         }
 
         CreativeItems items = new CreativeItems(entries);
@@ -197,12 +210,24 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
         return sortedMap;
     }
 
+    private static String encodeNbtToString(NbtMap tag) {
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        try (NBTOutputStream stream = new NBTOutputStream(new LittleEndianDataOutputStream(byteArrayOutputStream))) {
+            stream.writeTag(tag);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        return Base64.getEncoder().encodeToString(byteArrayOutputStream.toByteArray());
+    }
+
     @Value
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private static class CreativeItemEntry {
         private final String id;
         private final Integer damage;
         private final Integer blockRuntimeId;
+        @JsonProperty("block_state_b64")
+        private final String blockTag;
         @JsonProperty("nbt_b64")
         private final String nbt;
     }

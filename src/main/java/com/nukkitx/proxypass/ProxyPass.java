@@ -13,9 +13,6 @@ import com.nukkitx.nbt.NbtUtils;
 import com.nukkitx.protocol.bedrock.BedrockClient;
 import com.nukkitx.protocol.bedrock.BedrockPacketCodec;
 import com.nukkitx.protocol.bedrock.BedrockServer;
-import com.nukkitx.protocol.bedrock.v471.Bedrock_v471;
-import com.nukkitx.protocol.bedrock.v475.Bedrock_v475;
-import com.nukkitx.protocol.bedrock.v486.Bedrock_v486;
 import com.nukkitx.protocol.bedrock.v503.Bedrock_v503;
 import com.nukkitx.proxypass.network.ProxyBedrockEventHandler;
 import io.netty.util.ResourceLeakDetector;
@@ -170,6 +167,16 @@ public class ProxyPass {
             return nbtInputStream.readTag();
         } catch (IOException e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    public Object loadGzipNBT(String dataName) {
+        Path path = dataDir.resolve(dataName);
+        try (InputStream inputStream = Files.newInputStream(path);
+             NBTInputStream nbtInputStream = NbtUtils.createGZIPReader(inputStream)){
+            return nbtInputStream.readTag();
+        } catch (IOException e) {
+            return null;
         }
     }
 
