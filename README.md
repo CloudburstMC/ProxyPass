@@ -9,6 +9,6 @@ __ProxyPass requires  Java 8 u162 or later to function correctly due to the encr
 `online-mode` __needs to be set to__ `false` __in__ `server.properties` __so that ProxyPass can communicate with your Bedrock Dedicated Server.__
 ### Links
 
-__[Jenkins](https://ci.nukkitx.com/job/NukkitX/job/ProxyPass/job/master/)__
+__[Jenkins](https://ci.opencollab.dev/job/NukkitX/job/ProxyPass/job/master/)__
 
-__[Protocol library](https://github.com/NukkitX/Protocol) used in this project__
+__[Protocol library](https://github.com/CloudburstMC/Protocol) used in this project__
