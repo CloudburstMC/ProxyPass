@@ -2,9 +2,7 @@ package com.nukkitx.proxypass.network.bedrock.session;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.nimbusds.jwt.SignedJWT;
 import com.nukkitx.nbt.NBTOutputStream;
-import com.nukkitx.nbt.NbtList;
 import com.nukkitx.nbt.NbtMap;
 import com.nukkitx.nbt.NbtType;
 import com.nukkitx.nbt.util.stream.LittleEndianDataOutputStream;
@@ -13,7 +11,6 @@ import com.nukkitx.protocol.bedrock.data.inventory.ContainerId;
 import com.nukkitx.protocol.bedrock.data.inventory.ItemData;
 import com.nukkitx.protocol.bedrock.handler.BedrockPacketHandler;
 import com.nukkitx.protocol.bedrock.packet.*;
-import com.nukkitx.protocol.bedrock.util.EncryptionUtils;
 import com.nukkitx.proxypass.ProxyPass;
 import com.nukkitx.proxypass.network.bedrock.util.RecipeUtils;
 import io.netty.buffer.ByteBuf;
@@ -24,19 +21,12 @@ import lombok.RequiredArgsConstructor;
 import lombok.Value;
 import lombok.extern.log4j.Log4j2;
 
-import javax.crypto.SecretKey;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
-import java.security.interfaces.ECPublicKey;
-import java.security.spec.InvalidKeySpecException;
-import java.text.ParseException;
 import java.util.*;
 
 @Log4j2
@@ -46,23 +36,6 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
     private final ProxyPlayerSession player;
     private final ProxyPass proxy;
     private Int2ObjectMap<StartGamePacket.ItemEntry> itemEntries = new Int2ObjectOpenHashMap<>();
-
-    public boolean handle(ServerToClientHandshakePacket packet) {
-        try {
-            SignedJWT saltJwt = SignedJWT.parse(packet.getJwt());
-            URI x5u = saltJwt.getHeader().getX509CertURL();
-            ECPublicKey serverKey = EncryptionUtils.generateKey(x5u.toASCIIString());
-            SecretKey key = EncryptionUtils.getSecretKey(this.player.getProxyKeyPair().getPrivate(), serverKey,
-                    Base64.getDecoder().decode(saltJwt.getJWTClaimsSet().getStringClaim("salt")));
-            session.enableEncryption(key);
-        } catch (ParseException | NoSuchAlgorithmException | InvalidKeySpecException | InvalidKeyException e) {
-            throw new RuntimeException(e);
-        }
-
-        ClientToServerHandshakePacket clientToServerHandshake = new ClientToServerHandshakePacket();
-        session.sendPacketImmediately(clientToServerHandshake);
-        return true;
-    }
 
     public boolean handle(AvailableEntityIdentifiersPacket packet) {
         proxy.saveNBT("entity_identifiers", packet.getIdentifiers());

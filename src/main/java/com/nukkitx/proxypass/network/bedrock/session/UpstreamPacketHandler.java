@@ -12,9 +12,12 @@ import com.nimbusds.jose.shaded.json.JSONObject;
 import com.nimbusds.jwt.SignedJWT;
 import com.nukkitx.protocol.bedrock.BedrockClient;
 import com.nukkitx.protocol.bedrock.BedrockServerSession;
+import com.nukkitx.protocol.bedrock.data.PacketCompressionAlgorithm;
 import com.nukkitx.protocol.bedrock.handler.BedrockPacketHandler;
 import com.nukkitx.protocol.bedrock.packet.LoginPacket;
+import com.nukkitx.protocol.bedrock.packet.NetworkSettingsPacket;
 import com.nukkitx.protocol.bedrock.packet.PlayStatusPacket;
+import com.nukkitx.protocol.bedrock.packet.RequestNetworkSettingsPacket;
 import com.nukkitx.protocol.bedrock.util.EncryptionUtils;
 import com.nukkitx.proxypass.ProxyPass;
 import com.nukkitx.proxypass.network.bedrock.util.ForgeryUtils;
@@ -65,7 +68,7 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
     }
 
     @Override
-    public boolean handle(LoginPacket packet) {
+    public boolean handle(RequestNetworkSettingsPacket packet) {
         int protocolVersion = packet.getProtocolVersion();
 
         if (protocolVersion != ProxyPass.PROTOCOL_VERSION) {
@@ -77,7 +80,17 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
             }
         }
         session.setPacketCodec(ProxyPass.CODEC);
+        session.setCompression(PacketCompressionAlgorithm.ZLIB);
 
+        NetworkSettingsPacket networkSettingsPacket = new NetworkSettingsPacket();
+        networkSettingsPacket.setCompressionThreshold(0);
+        networkSettingsPacket.setCompressionAlgorithm(PacketCompressionAlgorithm.ZLIB);
+        session.sendPacketImmediately(networkSettingsPacket);
+        return true;
+    }
+
+    @Override
+    public boolean handle(LoginPacket packet) {
         JsonNode certData;
         try {
             certData = ProxyPass.JSON_MAPPER.readTree(packet.getChainData().toByteArray());
@@ -128,7 +141,7 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
     private void initializeProxySession() {
         log.debug("Initializing proxy session");
         BedrockClient client = proxy.newClient();
-        client.setRakNetVersion(10);
+        client.setRakNetVersion(ProxyPass.CODEC.getRaknetProtocolVersion());
         client.connect(proxy.getTargetAddress()).whenComplete((downstream, throwable) -> {
             if (throwable != null) {
                 log.error("Unable to connect to downstream server " + proxy.getTargetAddress(), throwable);
@@ -163,16 +176,17 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
             login.setSkinData(AsciiString.of(skinData.serialize()));
             login.setProtocolVersion(ProxyPass.PROTOCOL_VERSION);
 
-            downstream.sendPacketImmediately(login);
             this.session.setBatchHandler(proxySession.getUpstreamBatchHandler());
             downstream.setBatchHandler(proxySession.getDownstreamTailHandler());
             downstream.setLogging(true);
-            downstream.setPacketHandler(new DownstreamPacketHandler(downstream, proxySession, this.proxy));
+            downstream.setPacketHandler(new DownstreamInitialPacketHandler(downstream, proxySession, this.proxy, login));
             downstream.addDisconnectHandler(disconnectReason -> this.session.disconnect());
             downstream.getHardcodedBlockingId().set(ProxyPass.SHIELD_RUNTIME_ID);
             this.session.getHardcodedBlockingId().set(ProxyPass.SHIELD_RUNTIME_ID);
 
-            log.debug("Downstream connected");
+            RequestNetworkSettingsPacket packet = new RequestNetworkSettingsPacket();
+            packet.setProtocolVersion(ProxyPass.PROTOCOL_VERSION);
+            downstream.sendPacketImmediately(packet);
 
             //SkinUtils.saveSkin(proxySession, this.skinData);
         });
