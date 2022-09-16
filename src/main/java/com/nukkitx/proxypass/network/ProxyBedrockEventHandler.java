@@ -26,15 +26,15 @@ public class ProxyBedrockEventHandler implements BedrockServerEventHandler {
         ADVERTISEMENT.setMotd("ProxyPass");
         ADVERTISEMENT.setPlayerCount(0);
         ADVERTISEMENT.setMaximumPlayerCount(20);
-        ADVERTISEMENT.setSubMotd("C");
+        ADVERTISEMENT.setSubMotd("https://github.com/NukkitX/ProxyPass");
         ADVERTISEMENT.setNintendoLimited(true);
     }
 
     public ProxyBedrockEventHandler(ProxyPass proxy) {
         this.proxy = proxy;
-//        int port = this.proxy.getProxyAddress().getPort();
-//        ADVERTISEMENT.setIpv4Port(port);
-//        ADVERTISEMENT.setIpv6Port(port);
+        int port = this.proxy.getProxyAddress().getPort();
+        ADVERTISEMENT.setIpv4Port(port);
+        ADVERTISEMENT.setIpv6Port(port);
     }
 
     @Override
