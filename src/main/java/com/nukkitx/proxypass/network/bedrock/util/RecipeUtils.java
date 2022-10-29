@@ -4,12 +4,12 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.nukkitx.nbt.NBTOutputStream;
 import com.nukkitx.nbt.NbtMap;
 import com.nukkitx.nbt.NbtUtils;
-import com.nukkitx.protocol.bedrock.data.inventory.*;
-import com.nukkitx.protocol.bedrock.data.inventory.descriptor.*;
-import com.nukkitx.protocol.bedrock.packet.CraftingDataPacket;
 import com.nukkitx.proxypass.ProxyPass;
 import lombok.*;
 import lombok.experimental.UtilityClass;
+import org.cloudburstmc.protocol.bedrock.data.inventory.*;
+import org.cloudburstmc.protocol.bedrock.data.inventory.descriptor.*;
+import org.cloudburstmc.protocol.bedrock.packet.CraftingDataPacket;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -45,7 +45,7 @@ public class RecipeUtils {
 
                 int charCounter = 0;
                 // ItemData[] inputs = craftingData.getInputs().toArray(new ItemData[0]);
-                List<ItemDescriptorWithCount> inputs = craftingData.getInputDescriptors();
+                List<ItemDescriptorWithCount> inputs = craftingData.getInputs();
                 Map<Descriptor, Character> charItemMap = new HashMap<>();
                 char[][] shape = new char[craftingData.getHeight()][craftingData.getWidth()];
 
@@ -83,7 +83,7 @@ public class RecipeUtils {
                 entry.input = itemMap;
             }
             if (type == CraftingDataType.SHAPELESS || type == CraftingDataType.SHAPELESS_CHEMISTRY || type == CraftingDataType.SHULKER_BOX) {
-                entry.input = writeDescriptorArray(craftingData.getInputDescriptors());
+                entry.input = writeDescriptorArray(craftingData.getInputs());
             }
 
             if (type == CraftingDataType.FURNACE || type == CraftingDataType.FURNACE_DATA) {
@@ -156,9 +156,9 @@ public class RecipeUtils {
     }
 
     private static Item itemFromNetwork(ItemData data) {
-        int id = data.getId();
+        int id = data.getDefinition().getRuntimeId();
         String identifier = ProxyPass.legacyIdMap.get(id);
-        Integer damage = (int) data.getDamage();
+        Integer damage = data.getDamage();
         Integer count = data.getCount();
         String tag = nbtToBase64(data.getTag());
 
@@ -178,7 +178,7 @@ public class RecipeUtils {
         ItemDescriptor itemDescriptor = descriptorWithCount.getDescriptor();
 
         if (itemDescriptor instanceof DefaultDescriptor) {
-            descriptor.setItemId(((DefaultDescriptor) itemDescriptor).getItemId());
+            descriptor.setItemId(((DefaultDescriptor) itemDescriptor).getItemId().getRuntimeId());
             descriptor.setAuxValue(((DefaultDescriptor) itemDescriptor).getAuxValue());
         } else if (itemDescriptor instanceof MolangDescriptor) {
             descriptor.setTagExpression(((MolangDescriptor) itemDescriptor).getTagExpression());

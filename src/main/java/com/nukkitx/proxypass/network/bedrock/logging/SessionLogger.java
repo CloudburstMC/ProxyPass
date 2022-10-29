@@ -4,10 +4,10 @@ import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import com.nimbusds.jose.shaded.json.JSONObject;
-import com.nukkitx.protocol.bedrock.BedrockPacket;
-import com.nukkitx.protocol.bedrock.BedrockSession;
 import com.nukkitx.proxypass.ProxyPass;
 import lombok.extern.log4j.Log4j2;
+import org.cloudburstmc.protocol.bedrock.BedrockSession;
+import org.cloudburstmc.protocol.bedrock.packet.BedrockPacket;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
@@ -90,7 +90,7 @@ public class SessionLogger {
         String logPrefix = getLogPrefix(upstream);
         if (!proxy.isIgnoredPacket(packet.getClass())) {
             if (session.isLogging() && log.isTraceEnabled()) {
-                log.trace(logPrefix + " {}: {}", session.getAddress(), packet);
+                log.trace(logPrefix + " {}: {}", session.getSocketAddress(), packet);
             }
 
             if (proxy.getConfiguration().isLoggingPackets()) {

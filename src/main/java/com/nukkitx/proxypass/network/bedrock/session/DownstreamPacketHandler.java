@@ -6,77 +6,67 @@ import com.nukkitx.nbt.NBTOutputStream;
 import com.nukkitx.nbt.NbtMap;
 import com.nukkitx.nbt.NbtType;
 import com.nukkitx.nbt.util.stream.LittleEndianDataOutputStream;
-import com.nukkitx.protocol.bedrock.BedrockClientSession;
-import com.nukkitx.protocol.bedrock.data.inventory.ContainerId;
-import com.nukkitx.protocol.bedrock.data.inventory.ItemData;
-import com.nukkitx.protocol.bedrock.handler.BedrockPacketHandler;
-import com.nukkitx.protocol.bedrock.packet.*;
 import com.nukkitx.proxypass.ProxyPass;
 import com.nukkitx.proxypass.network.bedrock.util.RecipeUtils;
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufAllocator;
-import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
-import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
 import lombok.extern.log4j.Log4j2;
+import org.cloudburstmc.protocol.bedrock.BedrockSession;
+import org.cloudburstmc.protocol.bedrock.data.defintions.ItemDefinition;
+import org.cloudburstmc.protocol.bedrock.data.defintions.SimpleDefinitionRegistry;
+import org.cloudburstmc.protocol.bedrock.data.inventory.ContainerId;
+import org.cloudburstmc.protocol.bedrock.data.inventory.ItemData;
+import org.cloudburstmc.protocol.bedrock.packet.*;
+import org.cloudburstmc.protocol.common.PacketSignal;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
 import java.util.*;
 
 @Log4j2
 @RequiredArgsConstructor
 public class DownstreamPacketHandler implements BedrockPacketHandler {
-    private final BedrockClientSession session;
+    private final BedrockSession session;
     private final ProxyPlayerSession player;
     private final ProxyPass proxy;
-    private Int2ObjectMap<StartGamePacket.ItemEntry> itemEntries = new Int2ObjectOpenHashMap<>();
 
-    public boolean handle(AvailableEntityIdentifiersPacket packet) {
+    public PacketSignal handle(AvailableEntityIdentifiersPacket packet) {
         proxy.saveNBT("entity_identifiers", packet.getIdentifiers());
-        return false;
+        return PacketSignal.UNHANDLED;
     }
 
-    public boolean handle(BiomeDefinitionListPacket packet) {
+    public PacketSignal handle(BiomeDefinitionListPacket packet) {
         proxy.saveNBT("biome_definitions", packet.getDefinitions());
-        return false;
+        return PacketSignal.UNHANDLED;
     }
 
-    public boolean handle(StartGamePacket packet) {
+    public PacketSignal handle(StartGamePacket packet) {
         List<DataEntry> itemData = new ArrayList<>();
         LinkedHashMap<String, Integer> legacyItems = new LinkedHashMap<>();
         LinkedHashMap<String, Integer> legacyBlocks = new LinkedHashMap<>();
 
-        for (StartGamePacket.ItemEntry entry : packet.getItemEntries()) {
-            if (entry.getId() > 255) {
-                legacyItems.putIfAbsent(entry.getIdentifier(), (int) entry.getId());
+        for (ItemDefinition entry : packet.getItemDefinitions()) {
+            if (entry.getRuntimeId() > 255) {
+                legacyItems.putIfAbsent(entry.getIdentifier(), entry.getRuntimeId());
             } else {
                 String id = entry.getIdentifier();
                 if (id.contains(":item.")) {
                     id = id.replace(":item.", ":");
                 }
-                if (entry.getId() > 0) {
-                    legacyBlocks.putIfAbsent(id, (int) entry.getId());
+                if (entry.getRuntimeId() > 0) {
+                    legacyBlocks.putIfAbsent(id, (int) entry.getRuntimeId());
                 } else {
-                    legacyBlocks.putIfAbsent(id, 255 - entry.getId());
+                    legacyBlocks.putIfAbsent(id, 255 - entry.getRuntimeId());
                 }
             }
 
-            if ("minecraft:shield".equals(entry.getIdentifier())) {
-                log.info("Shield runtime ID {}", entry.getId());
-                player.getUpstream().getHardcodedBlockingId().set(entry.getId());
-                player.getDownstream().getHardcodedBlockingId().set(entry.getId());
-            }
-
-            itemData.add(new DataEntry(entry.getIdentifier(), entry.getId()));
-            this.itemEntries.put(entry.getId(), entry);
-            ProxyPass.legacyIdMap.put((int) entry.getId(), entry.getIdentifier());
+            itemData.add(new DataEntry(entry.getIdentifier(), entry.getRuntimeId()));
+            ProxyPass.legacyIdMap.put(entry.getRuntimeId(), entry.getIdentifier());
         }
+
+        this.session.getPeer().getCodecHelper().setItemDefinitions(SimpleDefinitionRegistry.<ItemDefinition>builder()
+                .addAll(packet.getItemDefinitions())
+                .build());
 
         itemData.sort(Comparator.comparing(o -> o.name));
 
@@ -84,20 +74,20 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
         proxy.saveJson("legacy_item_ids.json", sortMap(legacyItems));
         proxy.saveJson("runtime_item_states.json", itemData);
 
-        return false;
+        return PacketSignal.UNHANDLED;
     }
 
     @Override
-    public boolean handle(CraftingDataPacket packet) {
+    public PacketSignal handle(CraftingDataPacket packet) {
         RecipeUtils.writeRecipes(packet, this.proxy);
-        return false;
+        return PacketSignal.UNHANDLED;
     }
 
     @Override
-    public boolean handle(DisconnectPacket packet) {
+    public PacketSignal handle(DisconnectPacket packet) {
         this.session.disconnect();
         // Let the client see the reason too.
-        return false;
+        return PacketSignal.UNHANDLED;
     }
 
     private void dumpCreativeItems(ItemData[] contents) {
@@ -113,13 +103,7 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
 
         List<CreativeItemEntry> entries = new ArrayList<>();
         for (ItemData data : contents) {
-            int runtimeId = data.getId();
-
-            StartGamePacket.ItemEntry entry = this.itemEntries.get(runtimeId);
-            if (entry == null) {
-                log.info("Could not find entry for item with runtime ID {}", runtimeId);
-                continue;
-            }
+            ItemDefinition entry = data.getDefinition();
             String id = entry.getIdentifier();
             Integer damage = data.getDamage() == 0 ? null : (int) data.getDamage();
 
@@ -145,31 +129,18 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
     }
 
     @Override
-    public boolean handle(CreativeContentPacket packet) {
+    public PacketSignal handle(CreativeContentPacket packet) {
         dumpCreativeItems(packet.getContents());
-
-        Path path = proxy.getDataDir().resolve("creative_contents.dat");
-        ByteBuf buffer = ByteBufAllocator.DEFAULT.ioBuffer();
-        try {
-            ProxyPass.CODEC.tryEncode(buffer, packet, session);
-            try (OutputStream out = Files.newOutputStream(path, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE)){
-                buffer.readBytes(out, buffer.readableBytes());
-            } catch (IOException e) {
-                throw new IllegalStateException(e);
-            }
-        } finally {
-            buffer.release();
-        }
-        return false;
+        return PacketSignal.UNHANDLED;
     }
 
     // Pre 1.16 method of Creative Items
     @Override
-    public boolean handle(InventoryContentPacket packet) {
+    public PacketSignal handle(InventoryContentPacket packet) {
         if (packet.getContainerId() == ContainerId.CREATIVE) {
             dumpCreativeItems(packet.getContents().toArray(new ItemData[0]));
         }
-        return false;
+        return PacketSignal.UNHANDLED;
     }
 
     private static Map<String, Integer> sortMap(Map<String, Integer> map) {

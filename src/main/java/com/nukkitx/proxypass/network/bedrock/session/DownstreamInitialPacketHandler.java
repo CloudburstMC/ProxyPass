@@ -1,16 +1,13 @@
 package com.nukkitx.proxypass.network.bedrock.session;
 
 import com.nimbusds.jwt.SignedJWT;
-import com.nukkitx.protocol.bedrock.BedrockClientSession;
-import com.nukkitx.protocol.bedrock.handler.BedrockPacketHandler;
-import com.nukkitx.protocol.bedrock.packet.ClientToServerHandshakePacket;
-import com.nukkitx.protocol.bedrock.packet.LoginPacket;
-import com.nukkitx.protocol.bedrock.packet.NetworkSettingsPacket;
-import com.nukkitx.protocol.bedrock.packet.ServerToClientHandshakePacket;
-import com.nukkitx.protocol.bedrock.util.EncryptionUtils;
 import com.nukkitx.proxypass.ProxyPass;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
+import org.cloudburstmc.protocol.bedrock.BedrockSession;
+import org.cloudburstmc.protocol.bedrock.packet.*;
+import org.cloudburstmc.protocol.bedrock.util.EncryptionUtils;
+import org.cloudburstmc.protocol.common.PacketSignal;
 
 import javax.crypto.SecretKey;
 import java.net.URI;
@@ -24,21 +21,21 @@ import java.util.Base64;
 @Log4j2
 @RequiredArgsConstructor
 public class DownstreamInitialPacketHandler implements BedrockPacketHandler {
-    private final BedrockClientSession session;
+    private final BedrockSession session;
     private final ProxyPlayerSession player;
     private final ProxyPass proxy;
     private final LoginPacket loginPacket;
 
     @Override
-    public boolean handle(NetworkSettingsPacket packet) {
+    public PacketSignal handle(NetworkSettingsPacket packet) {
         this.session.setCompression(packet.getCompressionAlgorithm());
         log.info("Compression algorithm picked {}", packet.getCompressionAlgorithm());
 
         this.session.sendPacketImmediately(this.loginPacket);
-        return true;
+        return PacketSignal.HANDLED;
     }
 
-    public boolean handle(ServerToClientHandshakePacket packet) {
+    public PacketSignal handle(ServerToClientHandshakePacket packet) {
         try {
             SignedJWT saltJwt = SignedJWT.parse(packet.getJwt());
             URI x5u = saltJwt.getHeader().getX509CertURL();
@@ -56,6 +53,6 @@ public class DownstreamInitialPacketHandler implements BedrockPacketHandler {
 
         this.session.setPacketHandler(new DownstreamPacketHandler(this.session, this.player, this.proxy));
         log.debug("Downstream connected");
-        return true;
+        return PacketSignal.HANDLED;
     }
 }

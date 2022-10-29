@@ -10,15 +10,24 @@ import com.nukkitx.nbt.NBTInputStream;
 import com.nukkitx.nbt.NBTOutputStream;
 import com.nukkitx.nbt.NbtMap;
 import com.nukkitx.nbt.NbtUtils;
-import com.nukkitx.protocol.bedrock.BedrockClient;
-import com.nukkitx.protocol.bedrock.BedrockPacketCodec;
-import com.nukkitx.protocol.bedrock.BedrockServer;
-import com.nukkitx.protocol.bedrock.v557.Bedrock_v557;
-import com.nukkitx.proxypass.network.ProxyBedrockEventHandler;
+import com.nukkitx.proxypass.network.bedrock.session.UpstreamPacketHandler;
+import io.netty.bootstrap.Bootstrap;
+import io.netty.bootstrap.ServerBootstrap;
+import io.netty.channel.Channel;
+import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.socket.nio.NioDatagramChannel;
 import io.netty.util.ResourceLeakDetector;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.extern.log4j.Log4j2;
+import org.cloudburstmc.netty.channel.raknet.RakChannelFactory;
+import org.cloudburstmc.netty.channel.raknet.config.RakChannelOption;
+import org.cloudburstmc.protocol.bedrock.BedrockPong;
+import org.cloudburstmc.protocol.bedrock.BedrockSession;
+import org.cloudburstmc.protocol.bedrock.codec.BedrockCodec;
+import org.cloudburstmc.protocol.bedrock.codec.v557.Bedrock_v557;
+import org.cloudburstmc.protocol.bedrock.netty.initializer.BedrockClientInitializer;
+import org.cloudburstmc.protocol.bedrock.netty.initializer.BedrockServerInitializer;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -28,8 +37,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
 
 @Log4j2
 @Getter
@@ -37,12 +46,21 @@ public class ProxyPass {
     public static final ObjectMapper JSON_MAPPER = new ObjectMapper().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
     public static final YAMLMapper YAML_MAPPER = (YAMLMapper) new YAMLMapper().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
     public static final String MINECRAFT_VERSION;
-    public static final BedrockPacketCodec CODEC = Bedrock_v557.V557_CODEC;
+    public static final BedrockCodec CODEC = Bedrock_v557.CODEC;
     public static final int PROTOCOL_VERSION = CODEC.getProtocolVersion();
     private static final DefaultPrettyPrinter PRETTY_PRINTER = new DefaultPrettyPrinter();
     public static Map<Integer, String> legacyIdMap = new HashMap<>();
 
-    public static final int SHIELD_RUNTIME_ID = 355; // Change this when the item palette changes.
+    private static final BedrockPong ADVERTISEMENT = new BedrockPong()
+            .edition("MCPE")
+            .gameType("Survival")
+            .version(ProxyPass.MINECRAFT_VERSION)
+            .protocolVersion(ProxyPass.PROTOCOL_VERSION)
+            .motd("ProxyPass")
+            .playerCount(0)
+            .maximumPlayerCount(20)
+            .subMotd("https://github.com/CloudburstMC/ProxyPass")
+            .nintendoLimited(false);
 
     static {
         DefaultIndenter indenter = new DefaultIndenter("    ", "\n");
@@ -59,8 +77,10 @@ public class ProxyPass {
     }
 
     private final AtomicBoolean running = new AtomicBoolean(true);
-    private BedrockServer bedrockServer;
-    private final Set<BedrockClient> clients = Collections.newSetFromMap(new ConcurrentHashMap<>());
+
+    private final NioEventLoopGroup eventLoopGroup = new NioEventLoopGroup();
+    private Channel server;
+    private final Set<Channel> clients = ConcurrentHashMap.newKeySet();
     private int maxClients = 0;
     @Getter(AccessLevel.NONE)
     private final Set<Class<?>> ignoredPackets = Collections.newSetFromMap(new IdentityHashMap<>());
@@ -109,20 +129,42 @@ public class ProxyPass {
         Files.createDirectories(dataDir);
 
         log.info("Loading server...");
-        this.bedrockServer = new BedrockServer(this.proxyAddress);
-        this.bedrockServer.setHandler(new ProxyBedrockEventHandler(this));
-        this.bedrockServer.bind().join();
-        log.info("RakNet server started on {}", proxyAddress);
+        ADVERTISEMENT.ipv4Port(this.proxyAddress.getPort())
+                .ipv6Port(this.proxyAddress.getPort());
+        this.server = new ServerBootstrap()
+                .group(this.eventLoopGroup)
+                .channelFactory(RakChannelFactory.server(NioDatagramChannel.class))
+                .option(RakChannelOption.RAK_ADVERTISEMENT, ADVERTISEMENT.toByteBuf())
+                .childHandler(new BedrockServerInitializer() {
+                    @Override
+                    protected void initSession(BedrockSession session) {
+                        session.setPacketHandler(new UpstreamPacketHandler(session, ProxyPass.this));
+                    }
+                })
+                .bind(this.proxyAddress)
+                .awaitUninterruptibly()
+                .channel();
+        log.info("Bedrock server started on {}", proxyAddress);
 
         loop();
     }
 
-    public BedrockClient newClient() {
-        InetSocketAddress bindAddress = new InetSocketAddress("0.0.0.0", ThreadLocalRandom.current().nextInt(20000, 60000));
-        BedrockClient client = new BedrockClient(bindAddress);
-        this.clients.add(client);
-        client.bind().join();
-        return client;
+    public void newClient(InetSocketAddress socketAddress, Consumer<BedrockSession> sessionConsumer) {
+        Channel channel = new Bootstrap()
+                .group(this.eventLoopGroup)
+                .channelFactory(RakChannelFactory.client(NioDatagramChannel.class))
+                .option(RakChannelOption.RAK_PROTOCOL_VERSION, ProxyPass.CODEC.getRaknetProtocolVersion())
+                .handler(new BedrockClientInitializer() {
+                    @Override
+                    protected void initSession(BedrockSession bedrockSession) {
+                        sessionConsumer.accept(bedrockSession);
+                    }
+                })
+                .connect(socketAddress)
+                .awaitUninterruptibly()
+                .channel();
+
+        this.clients.add(channel);
     }
 
     private void loop() {
@@ -138,8 +180,8 @@ public class ProxyPass {
         }
 
         // Shutdown
-        this.clients.forEach(BedrockClient::close);
-        this.bedrockServer.close();
+        this.clients.forEach(Channel::disconnect);
+        this.server.disconnect();
     }
 
     public void shutdown() {
