@@ -69,14 +69,18 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
             } else {
                 status.setStatus(PlayStatusPacket.Status.LOGIN_FAILED_CLIENT_OLD);
             }
+
+            session.sendPacketImmediately(status);
+            return PacketSignal.HANDLED;
         }
         session.setCodec(ProxyPass.CODEC);
-        session.setCompression(PacketCompressionAlgorithm.ZLIB);
 
         NetworkSettingsPacket networkSettingsPacket = new NetworkSettingsPacket();
         networkSettingsPacket.setCompressionThreshold(0);
         networkSettingsPacket.setCompressionAlgorithm(PacketCompressionAlgorithm.ZLIB);
+
         session.sendPacketImmediately(networkSettingsPacket);
+        session.setCompression(PacketCompressionAlgorithm.ZLIB);
         return PacketSignal.HANDLED;
     }
 

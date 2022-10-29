@@ -116,7 +116,7 @@ public class ProxyPass {
 
         configuration.getIgnoredPackets().forEach(s -> {
             try {
-                ignoredPackets.add(Class.forName("com.nukkitx.protocol.bedrock.packet." + s));
+                ignoredPackets.add(Class.forName("org.cloudburstmc.protocol.bedrock.packet." + s));
             } catch (ClassNotFoundException e) {
                 log.warn("No packet with name {}", s);
             }
