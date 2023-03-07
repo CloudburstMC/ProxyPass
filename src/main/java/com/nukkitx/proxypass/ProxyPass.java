@@ -13,7 +13,7 @@ import com.nukkitx.nbt.NbtUtils;
 import com.nukkitx.protocol.bedrock.BedrockClient;
 import com.nukkitx.protocol.bedrock.BedrockPacketCodec;
 import com.nukkitx.protocol.bedrock.BedrockServer;
-import com.nukkitx.protocol.bedrock.v567.Bedrock_v567;
+import com.nukkitx.protocol.bedrock.v568.Bedrock_v568;
 import com.nukkitx.proxypass.network.ProxyBedrockEventHandler;
 import io.netty.util.ResourceLeakDetector;
 import lombok.AccessLevel;
@@ -37,7 +37,7 @@ public class ProxyPass {
     public static final ObjectMapper JSON_MAPPER = new ObjectMapper().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
     public static final YAMLMapper YAML_MAPPER = (YAMLMapper) new YAMLMapper().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
     public static final String MINECRAFT_VERSION;
-    public static final BedrockPacketCodec CODEC = Bedrock_v567.V567_CODEC;
+    public static final BedrockPacketCodec CODEC = Bedrock_v568.V568_CODEC;
     public static final int PROTOCOL_VERSION = CODEC.getProtocolVersion();
     public static final int SHIELD_RUNTIME_ID = 355; // Change this when the item palette changes.
     private static final DefaultPrettyPrinter PRETTY_PRINTER = new DefaultPrettyPrinter();
