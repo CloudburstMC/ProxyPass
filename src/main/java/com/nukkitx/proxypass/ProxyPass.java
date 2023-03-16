@@ -38,8 +38,8 @@ public class ProxyPass {
     public static final YAMLMapper YAML_MAPPER = (YAMLMapper) new YAMLMapper().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
     public static final String MINECRAFT_VERSION;
     public static final BedrockPacketCodec CODEC = Bedrock_v567patch.BEDROCK_V567PATCH.toBuilder()
-        .protocolVersion(568)
-        .minecraftVersion("1.19.63")
+        .protocolVersion(575)
+        .minecraftVersion("1.19.70")
         .build();
     public static final int PROTOCOL_VERSION = CODEC.getProtocolVersion();
     public static final int SHIELD_RUNTIME_ID = 355; // Change this when the item palette changes.
