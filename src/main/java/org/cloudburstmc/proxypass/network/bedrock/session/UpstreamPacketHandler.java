@@ -112,6 +112,7 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
             verifyJwt(clientJwt, identityPublicKey);
 
             skinData = new JSONObject(clientJwt.getPayload().toJSONObject());
+            chainData = packet.getChain();
             initializeProxySession();
         } catch (Exception e) {
             session.disconnect("disconnectionScreen.internalError.cantConnect");

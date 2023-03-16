@@ -25,7 +25,7 @@ import org.cloudburstmc.protocol.bedrock.BedrockClientSession;
 import org.cloudburstmc.protocol.bedrock.BedrockPong;
 import org.cloudburstmc.protocol.bedrock.BedrockServerSession;
 import org.cloudburstmc.protocol.bedrock.codec.BedrockCodec;
-import org.cloudburstmc.protocol.bedrock.codec.v557.Bedrock_v557;
+import org.cloudburstmc.protocol.bedrock.codec.v575.Bedrock_v575;
 import org.cloudburstmc.protocol.bedrock.netty.initializer.BedrockClientInitializer;
 import org.cloudburstmc.protocol.bedrock.netty.initializer.BedrockServerInitializer;
 import org.cloudburstmc.proxypass.network.bedrock.session.UpstreamPacketHandler;
@@ -47,7 +47,7 @@ public class ProxyPass {
     public static final ObjectMapper JSON_MAPPER = new ObjectMapper().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
     public static final YAMLMapper YAML_MAPPER = (YAMLMapper) new YAMLMapper().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
     public static final String MINECRAFT_VERSION;
-    public static final BedrockCodec CODEC = Bedrock_v557.CODEC;
+    public static final BedrockCodec CODEC = Bedrock_v575.CODEC;
     public static final int PROTOCOL_VERSION = CODEC.getProtocolVersion();
     private static final DefaultPrettyPrinter PRETTY_PRINTER = new DefaultPrettyPrinter();
     public static Map<Integer, String> legacyIdMap = new HashMap<>();
