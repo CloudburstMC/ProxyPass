@@ -1,4 +1,4 @@
-package com.nukkitx.proxypass.network.bedrock.session;
+package org.cloudburstmc.proxypass.network.bedrock.session;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeType;
@@ -8,15 +8,15 @@ import com.nimbusds.jose.JWSObject;
 import com.nimbusds.jose.crypto.factories.DefaultJWSVerifierFactory;
 import com.nimbusds.jose.shaded.json.JSONObject;
 import com.nimbusds.jwt.SignedJWT;
-import com.nukkitx.proxypass.ProxyPass;
-import com.nukkitx.proxypass.network.bedrock.util.ForgeryUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
-import org.cloudburstmc.protocol.bedrock.BedrockSession;
+import org.cloudburstmc.protocol.bedrock.BedrockServerSession;
 import org.cloudburstmc.protocol.bedrock.data.PacketCompressionAlgorithm;
 import org.cloudburstmc.protocol.bedrock.packet.*;
 import org.cloudburstmc.protocol.bedrock.util.EncryptionUtils;
 import org.cloudburstmc.protocol.common.PacketSignal;
+import org.cloudburstmc.proxypass.ProxyPass;
+import org.cloudburstmc.proxypass.network.bedrock.util.ForgeryUtils;
 
 import java.security.interfaces.ECPublicKey;
 import java.util.List;
@@ -26,7 +26,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class UpstreamPacketHandler implements BedrockPacketHandler {
 
-    private final BedrockSession session;
+    private final BedrockServerSession session;
     private final ProxyPass proxy;
     private JSONObject skinData;
     private JSONObject extraData;

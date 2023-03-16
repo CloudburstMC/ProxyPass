@@ -1,4 +1,4 @@
-package com.nukkitx.proxypass.network.bedrock.util;
+package org.cloudburstmc.proxypass.network.bedrock.util;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 

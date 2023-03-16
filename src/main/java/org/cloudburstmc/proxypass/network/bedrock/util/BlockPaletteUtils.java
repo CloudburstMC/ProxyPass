@@ -1,10 +1,10 @@
-package com.nukkitx.proxypass.network.bedrock.util;
+package org.cloudburstmc.proxypass.network.bedrock.util;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.nukkitx.nbt.NbtMap;
-import com.nukkitx.nbt.NbtType;
-import com.nukkitx.proxypass.ProxyPass;
 import lombok.Value;
+import org.cloudburstmc.nbt.NbtMap;
+import org.cloudburstmc.nbt.NbtType;
+import org.cloudburstmc.proxypass.ProxyPass;
 
 import java.util.*;
 

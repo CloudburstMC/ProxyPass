@@ -1,7 +1,5 @@
-package com.nukkitx.proxypass.network.bedrock.session;
+package org.cloudburstmc.proxypass.network.bedrock.session;
 
-import com.nukkitx.proxypass.ProxyPass;
-import com.nukkitx.proxypass.network.bedrock.logging.SessionLogger;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import lombok.AccessLevel;
@@ -16,6 +14,8 @@ import org.cloudburstmc.protocol.bedrock.packet.BedrockPacketHandler;
 import org.cloudburstmc.protocol.bedrock.packet.UnknownPacket;
 import org.cloudburstmc.protocol.bedrock.util.EncryptionUtils;
 import org.cloudburstmc.protocol.common.PacketSignal;
+import org.cloudburstmc.proxypass.ProxyPass;
+import org.cloudburstmc.proxypass.network.bedrock.logging.SessionLogger;
 
 import java.security.KeyPair;
 import java.util.Objects;

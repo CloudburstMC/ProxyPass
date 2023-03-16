@@ -1,23 +1,23 @@
-package com.nukkitx.proxypass.network.bedrock.session;
+package org.cloudburstmc.proxypass.network.bedrock.session;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.nukkitx.nbt.NBTOutputStream;
-import com.nukkitx.nbt.NbtMap;
-import com.nukkitx.nbt.NbtType;
-import com.nukkitx.nbt.util.stream.LittleEndianDataOutputStream;
-import com.nukkitx.proxypass.ProxyPass;
-import com.nukkitx.proxypass.network.bedrock.util.RecipeUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
 import lombok.extern.log4j.Log4j2;
+import org.cloudburstmc.nbt.NBTOutputStream;
+import org.cloudburstmc.nbt.NbtMap;
+import org.cloudburstmc.nbt.NbtType;
+import org.cloudburstmc.nbt.util.stream.LittleEndianDataOutputStream;
 import org.cloudburstmc.protocol.bedrock.BedrockSession;
 import org.cloudburstmc.protocol.bedrock.data.defintions.ItemDefinition;
-import org.cloudburstmc.protocol.bedrock.data.defintions.SimpleDefinitionRegistry;
 import org.cloudburstmc.protocol.bedrock.data.inventory.ContainerId;
 import org.cloudburstmc.protocol.bedrock.data.inventory.ItemData;
 import org.cloudburstmc.protocol.bedrock.packet.*;
 import org.cloudburstmc.protocol.common.PacketSignal;
+import org.cloudburstmc.protocol.common.SimpleDefinitionRegistry;
+import org.cloudburstmc.proxypass.ProxyPass;
+import org.cloudburstmc.proxypass.network.bedrock.util.RecipeUtils;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -109,10 +109,10 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
 
             String blockTag = null;
             Integer blockRuntimeId = null;
-            if (data.getBlockRuntimeId() != 0 && paletteTags != null) {
-                blockTag = encodeNbtToString(paletteTags.get(data.getBlockRuntimeId()));
-            } else if (data.getBlockRuntimeId() != 0) {
-                blockRuntimeId = data.getBlockRuntimeId();
+            if (data.getBlockDefinition() != null && paletteTags != null) {
+                blockTag = encodeNbtToString(paletteTags.get(data.getBlockDefinition().getRuntimeId()));
+            } else if (data.getBlockDefinition() != null) {
+                blockRuntimeId = data.getBlockDefinition().getRuntimeId();
             }
 
             NbtMap tag = data.getTag();

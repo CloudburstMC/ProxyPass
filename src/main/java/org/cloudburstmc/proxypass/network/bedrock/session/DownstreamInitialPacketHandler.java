@@ -1,13 +1,13 @@
-package com.nukkitx.proxypass.network.bedrock.session;
+package org.cloudburstmc.proxypass.network.bedrock.session;
 
 import com.nimbusds.jwt.SignedJWT;
-import com.nukkitx.proxypass.ProxyPass;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.cloudburstmc.protocol.bedrock.BedrockSession;
 import org.cloudburstmc.protocol.bedrock.packet.*;
 import org.cloudburstmc.protocol.bedrock.util.EncryptionUtils;
 import org.cloudburstmc.protocol.common.PacketSignal;
+import org.cloudburstmc.proxypass.ProxyPass;
 
 import javax.crypto.SecretKey;
 import java.net.URI;

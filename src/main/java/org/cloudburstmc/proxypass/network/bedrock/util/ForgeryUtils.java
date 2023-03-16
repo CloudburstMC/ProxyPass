@@ -1,4 +1,4 @@
-package com.nukkitx.proxypass.network.bedrock.util;
+package org.cloudburstmc.proxypass.network.bedrock.util;
 
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSAlgorithm;

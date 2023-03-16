@@ -1,9 +1,9 @@
-package com.nukkitx.proxypass;
+package org.cloudburstmc.proxypass;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.nukkitx.proxypass.network.bedrock.util.LogTo;
 import lombok.Getter;
 import lombok.ToString;
+import org.cloudburstmc.proxypass.network.bedrock.util.LogTo;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;

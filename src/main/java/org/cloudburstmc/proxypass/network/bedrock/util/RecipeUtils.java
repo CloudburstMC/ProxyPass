@@ -1,15 +1,19 @@
-package com.nukkitx.proxypass.network.bedrock.util;
+package org.cloudburstmc.proxypass.network.bedrock.util;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.nukkitx.nbt.NBTOutputStream;
-import com.nukkitx.nbt.NbtMap;
-import com.nukkitx.nbt.NbtUtils;
-import com.nukkitx.proxypass.ProxyPass;
 import lombok.*;
 import lombok.experimental.UtilityClass;
-import org.cloudburstmc.protocol.bedrock.data.inventory.*;
+import org.cloudburstmc.nbt.NBTOutputStream;
+import org.cloudburstmc.nbt.NbtMap;
+import org.cloudburstmc.nbt.NbtUtils;
+import org.cloudburstmc.protocol.bedrock.data.inventory.ItemData;
+import org.cloudburstmc.protocol.bedrock.data.inventory.crafting.ContainerMixData;
+import org.cloudburstmc.protocol.bedrock.data.inventory.crafting.CraftingDataType;
+import org.cloudburstmc.protocol.bedrock.data.inventory.crafting.PotionMixData;
+import org.cloudburstmc.protocol.bedrock.data.inventory.crafting.recipe.*;
 import org.cloudburstmc.protocol.bedrock.data.inventory.descriptor.*;
 import org.cloudburstmc.protocol.bedrock.packet.CraftingDataPacket;
+import org.cloudburstmc.proxypass.ProxyPass;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -24,35 +28,35 @@ public class RecipeUtils {
         List<PotionMixDataEntry> potions = new ArrayList<>();
         List<ContainerMixDataEntry> containers = new ArrayList<>();
 
-        for (CraftingData craftingData : packet.getCraftingData()) {
+        for (RecipeData recipe : packet.getCraftingData()) {
             CraftingDataEntry entry = new CraftingDataEntry();
 
-            CraftingDataType type = craftingData.getType();
+            CraftingDataType type = recipe.getType();
             entry.type = type.ordinal();
 
-            if (type != CraftingDataType.MULTI) {
-                entry.block = craftingData.getCraftingTag();
-            } else {
-                entry.uuid = craftingData.getUuid();
+            if (recipe instanceof TaggedCraftingData taggedRecipe) {
+                entry.block = taggedRecipe.getTag();
+            } else if (recipe instanceof UniqueCraftingData uniqueRecipe) {
+                entry.uuid = uniqueRecipe.getUuid();
             }
 
-            if (type == CraftingDataType.SHAPED || type == CraftingDataType.SHAPELESS || type == CraftingDataType.SHAPELESS_CHEMISTRY || type == CraftingDataType.SHULKER_BOX || type == CraftingDataType.SHAPED_CHEMISTRY) {
-                entry.id = craftingData.getRecipeId();
-                entry.priority = craftingData.getPriority();
-                entry.output = writeItemArray(craftingData.getOutputs().toArray(new ItemData[0]));
+            if (recipe instanceof CraftingRecipeData craftingRecipe) {
+                entry.id = craftingRecipe.getId();
+                entry.priority = craftingRecipe.getPriority();
+                entry.output = writeItemArray(craftingRecipe.getResults().toArray(new ItemData[0]));
             }
-            if (type == CraftingDataType.SHAPED || type == CraftingDataType.SHAPED_CHEMISTRY) {
+            if (recipe instanceof ShapedRecipeData shapedRecipe) {
 
                 int charCounter = 0;
                 // ItemData[] inputs = craftingData.getInputs().toArray(new ItemData[0]);
-                List<ItemDescriptorWithCount> inputs = craftingData.getInputs();
+                List<ItemDescriptorWithCount> inputs = shapedRecipe.getIngredients();
                 Map<Descriptor, Character> charItemMap = new HashMap<>();
-                char[][] shape = new char[craftingData.getHeight()][craftingData.getWidth()];
+                char[][] shape = new char[shapedRecipe.getHeight()][shapedRecipe.getWidth()];
 
-                for (int height = 0; height < craftingData.getHeight(); height++) {
+                for (int height = 0; height < shapedRecipe.getHeight(); height++) {
                     Arrays.fill(shape[height], ' ');
-                    int index = height * craftingData.getWidth();
-                    for (int width = 0; width < craftingData.getWidth(); width++) {
+                    int index = height * shapedRecipe.getWidth();
+                    for (int width = 0; width < shapedRecipe.getWidth(); width++) {
                         int slot = index + width;
                         Descriptor descriptor = fromNetwork(inputs.get(slot));
 
@@ -82,16 +86,16 @@ public class RecipeUtils {
                 }
                 entry.input = itemMap;
             }
-            if (type == CraftingDataType.SHAPELESS || type == CraftingDataType.SHAPELESS_CHEMISTRY || type == CraftingDataType.SHULKER_BOX) {
-                entry.input = writeDescriptorArray(craftingData.getInputs());
+            if (recipe instanceof ShapelessRecipeData shapelessRecipe) {
+                entry.input = writeDescriptorArray(shapelessRecipe.getIngredients());
             }
 
-            if (type == CraftingDataType.FURNACE || type == CraftingDataType.FURNACE_DATA) {
-                Integer damage = craftingData.getInputDamage();
+            if (recipe instanceof FurnaceRecipeData furnaceRecipe) {
+                Integer damage = furnaceRecipe.getInputData();
                 if (damage == 0x7fff) damage = -1;
                 if (damage == 0) damage = null;
-                entry.input = new Item(craftingData.getInputId(), ProxyPass.legacyIdMap.get(craftingData.getInputId()), damage, null, null);
-                entry.output = itemFromNetwork(craftingData.getOutputs().get(0));
+                entry.input = new Item(furnaceRecipe.getInputId(), ProxyPass.legacyIdMap.get(furnaceRecipe.getInputId()), damage, null, null);
+                entry.output = itemFromNetwork(furnaceRecipe.getResult());
             }
             entries.add(entry);
         }

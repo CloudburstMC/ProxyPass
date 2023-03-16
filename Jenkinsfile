@@ -1,8 +1,7 @@
 pipeline {
     agent any
     tools {
-        maven 'Maven 3'
-        jdk 'Java 8'
+        jdk 'Java 17'
     }
     options {
         buildDiscarder(logRotator(artifactNumToKeepStr: '5'))
@@ -10,11 +9,11 @@ pipeline {
     stages {
         stage ('Build') {
             steps {
-                sh 'mvn clean package'
+                sh './gradlew shadowJar'
             }
             post {
                 success {
-                    archiveArtifacts artifacts: 'target/proxypass-*-SNAPSHOT.jar', fingerprint: true
+                    archiveArtifacts artifacts: 'build/libs/ProxyPass.jar', fingerprint: true
                 }
             }
         }

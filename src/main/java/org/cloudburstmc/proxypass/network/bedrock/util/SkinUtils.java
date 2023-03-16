@@ -1,7 +1,7 @@
-package com.nukkitx.proxypass.network.bedrock.util;
+package org.cloudburstmc.proxypass.network.bedrock.util;
 
 import com.nimbusds.jose.shaded.json.JSONObject;
-import com.nukkitx.proxypass.network.bedrock.session.ProxyPlayerSession;
+import org.cloudburstmc.proxypass.network.bedrock.session.ProxyPlayerSession;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;

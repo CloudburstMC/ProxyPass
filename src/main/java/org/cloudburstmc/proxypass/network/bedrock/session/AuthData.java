@@ -1,4 +1,4 @@
-package com.nukkitx.proxypass.network.bedrock.session;
+package org.cloudburstmc.proxypass.network.bedrock.session;
 
 import lombok.Value;
 
