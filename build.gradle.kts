@@ -11,6 +11,7 @@ plugins {
 java {
     toolchain {
         languageVersion.set(JavaLanguageVersion.of(17))
+
     }
 }
 
@@ -44,4 +45,5 @@ tasks.shadowJar {
 
 tasks.named<JavaExec>("run") {
     workingDir = projectDir.resolve("run")
+    workingDir.mkdir()
 }
