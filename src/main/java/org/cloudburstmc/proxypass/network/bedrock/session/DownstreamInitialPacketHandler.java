@@ -51,7 +51,8 @@ public class DownstreamInitialPacketHandler implements BedrockPacketHandler {
         session.sendPacketImmediately(clientToServerHandshake);
 
 
-        this.session.setPacketHandler(new DownstreamPacketHandler(this.session, this.player, this.proxy));
+        ((ProxyPlayerSession.Handler) this.session.getPacketHandler())
+                .setHandler(new DownstreamPacketHandler(this.session, this.player, this.proxy));
         log.debug("Downstream connected");
         return PacketSignal.HANDLED;
     }

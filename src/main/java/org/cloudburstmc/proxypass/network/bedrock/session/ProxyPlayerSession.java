@@ -77,7 +77,7 @@ public class ProxyPlayerSession {
 
         @Override
         public PacketSignal handlePacket(BedrockPacket packet) {
-            PacketSignal signal = packet.handle(handler);
+            PacketSignal signal = handler == null ? PacketSignal.UNHANDLED : packet.handle(handler);
 
             if (signal == PacketSignal.UNHANDLED || signal == null) {
                 this.session.sendPacket(packet);

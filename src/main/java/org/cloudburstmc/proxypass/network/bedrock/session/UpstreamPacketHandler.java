@@ -151,6 +151,9 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
             downstream.setPacketHandler(proxySession.getDownstreamTailHandler());
             downstream.setLogging(true);
             ((ProxyPlayerSession.Handler) downstream.getPacketHandler()).setHandler(new DownstreamInitialPacketHandler(downstream, proxySession, this.proxy, login));
+            ProxyPlayerSession.Handler handler = proxySession.getUpstreamBatchHandler();
+            handler.setHandler(this);
+            this.session.setPacketHandler(handler);
 
             RequestNetworkSettingsPacket packet = new RequestNetworkSettingsPacket();
             packet.setProtocolVersion(ProxyPass.PROTOCOL_VERSION);
