@@ -11,6 +11,7 @@ import org.cloudburstmc.nbt.NbtType;
 import org.cloudburstmc.nbt.util.stream.LittleEndianDataOutputStream;
 import org.cloudburstmc.protocol.bedrock.BedrockSession;
 import org.cloudburstmc.protocol.bedrock.data.defintions.ItemDefinition;
+import org.cloudburstmc.protocol.bedrock.data.defintions.SimpleItemDefinition;
 import org.cloudburstmc.protocol.bedrock.data.inventory.ContainerId;
 import org.cloudburstmc.protocol.bedrock.data.inventory.ItemData;
 import org.cloudburstmc.protocol.bedrock.packet.*;
@@ -18,6 +19,7 @@ import org.cloudburstmc.protocol.common.PacketSignal;
 import org.cloudburstmc.protocol.common.SimpleDefinitionRegistry;
 import org.cloudburstmc.proxypass.ProxyPass;
 import org.cloudburstmc.proxypass.network.bedrock.util.RecipeUtils;
+import org.cloudburstmc.proxypass.network.bedrock.util.UnknownBlockDefinitionRegistry;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -54,7 +56,7 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
                     id = id.replace(":item.", ":");
                 }
                 if (entry.getRuntimeId() > 0) {
-                    legacyBlocks.putIfAbsent(id, (int) entry.getRuntimeId());
+                    legacyBlocks.putIfAbsent(id, entry.getRuntimeId());
                 } else {
                     legacyBlocks.putIfAbsent(id, 255 - entry.getRuntimeId());
                 }
@@ -66,7 +68,9 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
 
         this.session.getPeer().getCodecHelper().setItemDefinitions(SimpleDefinitionRegistry.<ItemDefinition>builder()
                 .addAll(packet.getItemDefinitions())
+                .add(new SimpleItemDefinition("minecraft:empty", 0, false))
                 .build());
+        this.session.getPeer().getCodecHelper().setBlockDefinitions(new UnknownBlockDefinitionRegistry());
 
         itemData.sort(Comparator.comparing(o -> o.name));
 
