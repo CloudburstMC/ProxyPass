@@ -32,16 +32,19 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
     private final ProxyPlayerSession player;
     private final ProxyPass proxy;
 
+    @Override
     public PacketSignal handle(AvailableEntityIdentifiersPacket packet) {
         proxy.saveNBT("entity_identifiers", packet.getIdentifiers());
         return PacketSignal.UNHANDLED;
     }
 
+    @Override
     public PacketSignal handle(BiomeDefinitionListPacket packet) {
         proxy.saveNBT("biome_definitions", packet.getDefinitions());
         return PacketSignal.UNHANDLED;
     }
 
+    @Override
     public PacketSignal handle(StartGamePacket packet) {
         List<DataEntry> itemData = new ArrayList<>();
         LinkedHashMap<String, Integer> legacyItems = new LinkedHashMap<>();
