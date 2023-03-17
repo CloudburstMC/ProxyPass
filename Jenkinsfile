@@ -9,7 +9,7 @@ pipeline {
     stages {
         stage ('Build') {
             steps {
-                sh './gradlew shadowJar'
+                sh './gradlew shadowJar --refresh-dependencies'
             }
             post {
                 success {
