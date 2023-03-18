@@ -1,5 +1,6 @@
 package org.cloudburstmc.proxypass;
 
+import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.core.util.DefaultIndenter;
 import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
@@ -44,14 +45,11 @@ import java.util.function.Consumer;
 @Log4j2
 @Getter
 public class ProxyPass {
-    public static final ObjectMapper JSON_MAPPER = new ObjectMapper().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
+    public static final ObjectMapper JSON_MAPPER;
     public static final YAMLMapper YAML_MAPPER = (YAMLMapper) new YAMLMapper().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
     public static final String MINECRAFT_VERSION;
     public static final BedrockCodec CODEC = Bedrock_v575.CODEC;
     public static final int PROTOCOL_VERSION = CODEC.getProtocolVersion();
-    private static final DefaultPrettyPrinter PRETTY_PRINTER = new DefaultPrettyPrinter();
-    public static Map<Integer, String> legacyIdMap = new HashMap<>();
-
     private static final BedrockPong ADVERTISEMENT = new BedrockPong()
             .edition("MCPE")
             .gameType("Survival")
@@ -62,29 +60,39 @@ public class ProxyPass {
             .maximumPlayerCount(20)
             .subMotd("https://github.com/CloudburstMC/ProxyPass")
             .nintendoLimited(false);
+    private static final DefaultPrettyPrinter PRETTY_PRINTER;
+    public static Map<Integer, String> legacyIdMap = new HashMap<>();
 
     static {
+        PRETTY_PRINTER = new DefaultPrettyPrinter() {
+            @Override
+            public DefaultPrettyPrinter createInstance() {
+                return this;
+            }
+
+            @SuppressWarnings("NullableProblems")
+            @Override
+            public void writeObjectFieldValueSeparator(JsonGenerator generator) throws IOException {
+                generator.writeRaw(": ");
+            }
+        };
+
         DefaultIndenter indenter = new DefaultIndenter("    ", "\n");
         PRETTY_PRINTER.indentArraysWith(indenter);
         PRETTY_PRINTER.indentObjectsWith(indenter);
-        String minecraftVersion;
 
-        try {
-            minecraftVersion = CODEC.getMinecraftVersion();
-        } catch (NullPointerException e) {
-            minecraftVersion = "0.0.0";
-        }
-        MINECRAFT_VERSION = minecraftVersion;
+        JSON_MAPPER = new ObjectMapper().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES).setDefaultPrettyPrinter(PRETTY_PRINTER);
+        MINECRAFT_VERSION = CODEC.getMinecraftVersion();
     }
 
     private final AtomicBoolean running = new AtomicBoolean(true);
 
     private final NioEventLoopGroup eventLoopGroup = new NioEventLoopGroup();
-    private Channel server;
     private final Set<Channel> clients = ConcurrentHashMap.newKeySet();
-    private int maxClients = 0;
     @Getter(AccessLevel.NONE)
     private final Set<Class<?>> ignoredPackets = Collections.newSetFromMap(new IdentityHashMap<>());
+    private Channel server;
+    private int maxClients = 0;
     private InetSocketAddress targetAddress;
     private InetSocketAddress proxyAddress;
     private Configuration configuration;
@@ -196,7 +204,7 @@ public class ProxyPass {
     public void saveNBT(String dataName, Object dataTag) {
         Path path = dataDir.resolve(dataName + ".dat");
         try (OutputStream outputStream = Files.newOutputStream(path, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
-             NBTOutputStream nbtOutputStream = NbtUtils.createNetworkWriter(outputStream)){
+             NBTOutputStream nbtOutputStream = NbtUtils.createNetworkWriter(outputStream)) {
             nbtOutputStream.writeTag(dataTag);
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -206,7 +214,7 @@ public class ProxyPass {
     public Object loadNBT(String dataName) {
         Path path = dataDir.resolve(dataName + ".dat");
         try (InputStream inputStream = Files.newInputStream(path);
-             NBTInputStream nbtInputStream = NbtUtils.createNetworkReader(inputStream)){
+             NBTInputStream nbtInputStream = NbtUtils.createNetworkReader(inputStream)) {
             return nbtInputStream.readTag();
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -216,7 +224,7 @@ public class ProxyPass {
     public Object loadGzipNBT(String dataName) {
         Path path = dataDir.resolve(dataName);
         try (InputStream inputStream = Files.newInputStream(path);
-             NBTInputStream nbtInputStream = NbtUtils.createGZIPReader(inputStream)){
+             NBTInputStream nbtInputStream = NbtUtils.createGZIPReader(inputStream)) {
             return nbtInputStream.readTag();
         } catch (IOException e) {
             return null;
@@ -253,8 +261,8 @@ public class ProxyPass {
     public boolean isIgnoredPacket(Class<?> clazz) {
         return this.ignoredPackets.contains(clazz);
     }
-    
+
     public boolean isFull() {
-        return maxClients > 0 ? this.clients.size() >= maxClients : false;
+        return maxClients > 0 && this.clients.size() >= maxClients;
     }
 }

@@ -25,11 +25,11 @@ dependencies {
     annotationProcessor("org.projectlombok:lombok:1.18.26")
     compileOnly("com.google.code.findbugs:jsr305:3.0.2")
     implementation("org.cloudburstmc.protocol:bedrock-connection:3.0.0.Beta1-SNAPSHOT")
-    implementation("com.fasterxml.jackson.core:jackson-databind:2.13.4.2")
-    implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.13.4")
+    implementation("com.fasterxml.jackson.core:jackson-databind:2.14.2")
+    implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.14.2")
     implementation("com.nukkitx:common:1.0.1-SNAPSHOT")
     implementation("org.fusesource.jansi:jansi:2.4.0")
-    implementation("org.jline:jline-reader:3.20.0")
+    implementation("org.jline:jline-reader:3.23.0")
 }
 
 application {
