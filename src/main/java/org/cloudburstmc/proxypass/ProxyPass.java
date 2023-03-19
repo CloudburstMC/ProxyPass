@@ -22,13 +22,13 @@ import org.cloudburstmc.nbt.NbtMap;
 import org.cloudburstmc.nbt.NbtUtils;
 import org.cloudburstmc.netty.channel.raknet.RakChannelFactory;
 import org.cloudburstmc.netty.channel.raknet.config.RakChannelOption;
-import org.cloudburstmc.protocol.bedrock.BedrockClientSession;
+import org.cloudburstmc.protocol.bedrock.BedrockPeer;
 import org.cloudburstmc.protocol.bedrock.BedrockPong;
-import org.cloudburstmc.protocol.bedrock.BedrockServerSession;
 import org.cloudburstmc.protocol.bedrock.codec.BedrockCodec;
 import org.cloudburstmc.protocol.bedrock.codec.v575.Bedrock_v575;
-import org.cloudburstmc.protocol.bedrock.netty.initializer.BedrockClientInitializer;
-import org.cloudburstmc.protocol.bedrock.netty.initializer.BedrockServerInitializer;
+import org.cloudburstmc.protocol.bedrock.netty.initializer.BedrockChannelInitializer;
+import org.cloudburstmc.proxypass.network.bedrock.session.ProxyClientSession;
+import org.cloudburstmc.proxypass.network.bedrock.session.ProxyServerSession;
 import org.cloudburstmc.proxypass.network.bedrock.session.UpstreamPacketHandler;
 
 import java.io.IOException;
@@ -144,9 +144,15 @@ public class ProxyPass {
                 .group(this.eventLoopGroup)
                 .channelFactory(RakChannelFactory.server(NioDatagramChannel.class))
                 .option(RakChannelOption.RAK_ADVERTISEMENT, ADVERTISEMENT.toByteBuf())
-                .childHandler(new BedrockServerInitializer() {
+                .childHandler(new BedrockChannelInitializer<ProxyServerSession>() {
+
                     @Override
-                    protected void initSession(BedrockServerSession session) {
+                    protected ProxyServerSession createSession0(BedrockPeer peer, int subClientId) {
+                        return new ProxyServerSession(peer, subClientId, ProxyPass.this);
+                    }
+
+                    @Override
+                    protected void initSession(ProxyServerSession session) {
                         session.setPacketHandler(new UpstreamPacketHandler(session, ProxyPass.this));
                     }
                 })
@@ -158,14 +164,20 @@ public class ProxyPass {
         loop();
     }
 
-    public void newClient(InetSocketAddress socketAddress, Consumer<BedrockClientSession> sessionConsumer) {
+    public void newClient(InetSocketAddress socketAddress, Consumer<ProxyClientSession> sessionConsumer) {
         Channel channel = new Bootstrap()
                 .group(this.eventLoopGroup)
                 .channelFactory(RakChannelFactory.client(NioDatagramChannel.class))
                 .option(RakChannelOption.RAK_PROTOCOL_VERSION, ProxyPass.CODEC.getRaknetProtocolVersion())
-                .handler(new BedrockClientInitializer() {
+                .handler(new BedrockChannelInitializer<ProxyClientSession>() {
+
                     @Override
-                    protected void initSession(BedrockClientSession session) {
+                    protected ProxyClientSession createSession0(BedrockPeer peer, int subClientId) {
+                        return new ProxyClientSession(peer, subClientId, ProxyPass.this);
+                    }
+
+                    @Override
+                    protected void initSession(ProxyClientSession session) {
                         sessionConsumer.accept(session);
                     }
                 })

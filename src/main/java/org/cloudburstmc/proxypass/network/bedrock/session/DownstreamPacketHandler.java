@@ -69,11 +69,17 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
             ProxyPass.legacyIdMap.put(entry.getRuntimeId(), entry.getIdentifier());
         }
 
-        this.session.getPeer().getCodecHelper().setItemDefinitions(SimpleDefinitionRegistry.<ItemDefinition>builder()
+        SimpleDefinitionRegistry<ItemDefinition> itemDefinitions = SimpleDefinitionRegistry.<ItemDefinition>builder()
                 .addAll(packet.getItemDefinitions())
                 .add(new SimpleItemDefinition("minecraft:empty", 0, false))
-                .build());
-        this.session.getPeer().getCodecHelper().setBlockDefinitions(new UnknownBlockDefinitionRegistry());
+                .build();
+        UnknownBlockDefinitionRegistry blockDefinitions = new UnknownBlockDefinitionRegistry();
+
+        this.session.getPeer().getCodecHelper().setItemDefinitions(itemDefinitions);
+        player.getUpstream().getPeer().getCodecHelper().setItemDefinitions(itemDefinitions);
+
+        this.session.getPeer().getCodecHelper().setBlockDefinitions(blockDefinitions);
+        player.getUpstream().getPeer().getCodecHelper().setBlockDefinitions(blockDefinitions);
 
         itemData.sort(Comparator.comparing(o -> o.name));
 

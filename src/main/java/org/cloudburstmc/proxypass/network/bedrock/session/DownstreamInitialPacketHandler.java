@@ -3,7 +3,6 @@ package org.cloudburstmc.proxypass.network.bedrock.session;
 import com.nimbusds.jwt.SignedJWT;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
-import org.cloudburstmc.protocol.bedrock.BedrockSession;
 import org.cloudburstmc.protocol.bedrock.packet.*;
 import org.cloudburstmc.protocol.bedrock.util.EncryptionUtils;
 import org.cloudburstmc.protocol.common.PacketSignal;
@@ -21,7 +20,7 @@ import java.util.Base64;
 @Log4j2
 @RequiredArgsConstructor
 public class DownstreamInitialPacketHandler implements BedrockPacketHandler {
-    private final BedrockSession session;
+    private final ProxyClientSession session;
     private final ProxyPlayerSession player;
     private final ProxyPass proxy;
     private final LoginPacket loginPacket;
@@ -51,8 +50,7 @@ public class DownstreamInitialPacketHandler implements BedrockPacketHandler {
         session.sendPacketImmediately(clientToServerHandshake);
 
 
-        ((ProxyPlayerSession.Handler) this.session.getPacketHandler())
-                .setHandler(new DownstreamPacketHandler(this.session, this.player, this.proxy));
+        this.session.setPacketHandler(new DownstreamPacketHandler(this.session, this.player, this.proxy));
         log.debug("Downstream connected");
         return PacketSignal.HANDLED;
     }

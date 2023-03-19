@@ -10,7 +10,6 @@ import com.nimbusds.jose.shaded.json.JSONObject;
 import com.nimbusds.jwt.SignedJWT;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
-import org.cloudburstmc.protocol.bedrock.BedrockServerSession;
 import org.cloudburstmc.protocol.bedrock.data.PacketCompressionAlgorithm;
 import org.cloudburstmc.protocol.bedrock.packet.*;
 import org.cloudburstmc.protocol.bedrock.util.EncryptionUtils;
@@ -26,7 +25,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class UpstreamPacketHandler implements BedrockPacketHandler {
 
-    private final BedrockServerSession session;
+    private final ProxyServerSession session;
     private final ProxyPass proxy;
     private JSONObject skinData;
     private JSONObject extraData;
@@ -125,10 +124,11 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
         log.debug("Initializing proxy session");
         this.proxy.newClient(this.proxy.getTargetAddress(), downstream -> {
             downstream.setCodec(ProxyPass.CODEC);
+            downstream.setSendSession(this.session);
+            this.session.setSendSession(downstream);
 
             ProxyPlayerSession proxySession = new ProxyPlayerSession(this.session, downstream, this.proxy, this.authData);
             this.player = proxySession;
-//            downstream.getHardcodedBlockingId().set(355);
             try {
                 JWSObject jwt = chainData.get(chainData.size() - 1);
                 JsonNode payload = ProxyPass.JSON_MAPPER.readTree(jwt.getPayload().toBytes());
@@ -147,13 +147,8 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
             login.setExtra(skinData);
             login.setProtocolVersion(ProxyPass.PROTOCOL_VERSION);
 
-            this.session.setPacketHandler(proxySession.getUpstreamBatchHandler());
-            downstream.setPacketHandler(proxySession.getDownstreamTailHandler());
+            downstream.setPacketHandler(new DownstreamInitialPacketHandler(downstream, proxySession, this.proxy, login));
             downstream.setLogging(true);
-            ((ProxyPlayerSession.Handler) downstream.getPacketHandler()).setHandler(new DownstreamInitialPacketHandler(downstream, proxySession, this.proxy, login));
-            ProxyPlayerSession.Handler handler = proxySession.getUpstreamBatchHandler();
-            handler.setHandler(this);
-            this.session.setPacketHandler(handler);
 
             RequestNetworkSettingsPacket packet = new RequestNetworkSettingsPacket();
             packet.setProtocolVersion(ProxyPass.PROTOCOL_VERSION);
