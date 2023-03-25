@@ -5,7 +5,8 @@ description = "Proxy pass allows developers to MITM a vanilla client and server 
 plugins {
     id("java")
     id("application")
-    id("com.github.johnrengelman.shadow") version "8.0.0"
+    @Suppress("DSL_SCOPE_VIOLATION") // Temp workaround for KTIJ-19369 until Gradle 8.1 is released
+    alias(libs.plugins.shadow)
 }
 
 java {
@@ -21,15 +22,15 @@ repositories {
 }
 
 dependencies {
-    compileOnly("org.projectlombok:lombok:1.18.26")
-    annotationProcessor("org.projectlombok:lombok:1.18.26")
-    compileOnly("com.google.code.findbugs:jsr305:3.0.2")
-    implementation("org.cloudburstmc.protocol:bedrock-connection:3.0.0.Beta1-SNAPSHOT")
-    implementation("com.fasterxml.jackson.core:jackson-databind:2.14.2")
-    implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.14.2")
-    implementation("com.nukkitx:common:1.0.1-SNAPSHOT")
-    implementation("org.fusesource.jansi:jansi:2.4.0")
-    implementation("org.jline:jline-reader:3.23.0")
+    compileOnly(libs.lombok)
+    annotationProcessor(libs.lombok)
+    compileOnly(libs.jsr305)
+    implementation(libs.bedrock.connection)
+    implementation(libs.jackson.databind)
+    implementation(libs.jackson.dataformat.yaml)
+    implementation(libs.common)
+    implementation(libs.jansi)
+    implementation(libs.jline.reader)
 }
 
 application {
