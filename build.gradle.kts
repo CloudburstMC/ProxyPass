@@ -5,7 +5,6 @@ description = "Proxy pass allows developers to MITM a vanilla client and server 
 plugins {
     id("java")
     id("application")
-    @Suppress("DSL_SCOPE_VIOLATION") // Temp workaround for KTIJ-19369 until Gradle 8.1 is released
     alias(libs.plugins.shadow)
 }
 
