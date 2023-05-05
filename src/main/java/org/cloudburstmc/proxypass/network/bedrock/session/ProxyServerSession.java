@@ -20,6 +20,8 @@ public class ProxyServerSession extends BedrockServerSession implements ProxySes
     private final ProxyPass proxyPass;
     @Setter
     private BedrockSession sendSession;
+    @Setter
+    private ProxyPlayerSession player;
 
     public ProxyServerSession(BedrockPeer peer, int subClientId, ProxyPass proxyPass) {
         super(peer, subClientId);
@@ -29,7 +31,10 @@ public class ProxyServerSession extends BedrockServerSession implements ProxySes
     @Override
     protected void onPacket(BedrockPacketWrapper wrapper) {
         BedrockPacket packet = wrapper.getPacket();
-        this.logInbound(packet);
+        if (player != null) {
+            player.logger.logPacket(this, packet, true);
+        }
+
         if (proxyPass.getConfiguration().isPacketTesting()) {
             TestUtils.testPacket(this, wrapper);
         }

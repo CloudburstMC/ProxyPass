@@ -129,6 +129,10 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
 
             ProxyPlayerSession proxySession = new ProxyPlayerSession(this.session, downstream, this.proxy, this.authData);
             this.player = proxySession;
+
+            downstream.setPlayer(proxySession);
+            this.session.setPlayer(proxySession);
+
             try {
                 JWSObject jwt = chainData.get(chainData.size() - 1);
                 JsonNode payload = ProxyPass.JSON_MAPPER.readTree(jwt.getPayload().toBytes());
