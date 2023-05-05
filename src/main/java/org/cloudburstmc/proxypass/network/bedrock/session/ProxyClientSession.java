@@ -1,5 +1,6 @@
 package org.cloudburstmc.proxypass.network.bedrock.session;
 
+import io.netty.util.ReferenceCountUtil;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.log4j.Log4j2;
@@ -36,7 +37,7 @@ public class ProxyClientSession extends BedrockClientSession implements ProxySes
         if (this.packetHandler == null) {
             log.warn("Received packet without a packet handler for {}:{}: {}", new Object[]{this.getSocketAddress(), this.subClientId, packet});
         } else if (this.packetHandler.handlePacket(packet) == PacketSignal.UNHANDLED && this.sendSession != null) {
-            this.sendSession.sendPacket(packet);
+            this.sendSession.sendPacket(ReferenceCountUtil.retain(packet));
         }
     }
 }
