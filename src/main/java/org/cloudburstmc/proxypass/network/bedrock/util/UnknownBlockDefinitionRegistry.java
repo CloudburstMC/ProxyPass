@@ -1,6 +1,6 @@
 package org.cloudburstmc.proxypass.network.bedrock.util;
 
-import org.cloudburstmc.protocol.bedrock.data.defintions.BlockDefinition;
+import org.cloudburstmc.protocol.bedrock.data.definitions.BlockDefinition;
 import org.cloudburstmc.protocol.common.DefinitionRegistry;
 
 public class UnknownBlockDefinitionRegistry implements DefinitionRegistry<BlockDefinition> {
