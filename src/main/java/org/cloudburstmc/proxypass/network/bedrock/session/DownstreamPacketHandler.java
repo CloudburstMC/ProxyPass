@@ -24,6 +24,7 @@ import org.cloudburstmc.proxypass.network.bedrock.util.UnknownBlockDefinitionReg
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Log4j2
 @RequiredArgsConstructor
@@ -38,6 +39,13 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
         return PacketSignal.UNHANDLED;
     }
 
+    @Override
+    public PacketSignal handle(CompressedBiomeDefinitionListPacket packet) {
+        proxy.saveNBT("biome_definitions", packet.getDefinitions());
+        return PacketSignal.UNHANDLED;
+    }
+
+    // Handles biome definitions for versions prior to 1.19.80
     @Override
     public PacketSignal handle(BiomeDefinitionListPacket packet) {
         proxy.saveNBT("biome_definitions", packet.getDefinitions());
@@ -151,7 +159,7 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
         return PacketSignal.UNHANDLED;
     }
 
-    // Pre 1.16 method of Creative Items
+    // Handles creative items for versions prior to 1.16
     @Override
     public PacketSignal handle(InventoryContentPacket packet) {
         if (packet.getContainerId() == ContainerId.CREATIVE) {
@@ -161,24 +169,23 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
     }
 
     private static Map<String, Integer> sortMap(Map<String, Integer> map) {
-        List<Map.Entry<String, Integer>> entries = new ArrayList<>(map.entrySet());
-        entries.sort(Map.Entry.comparingByKey());
-
-        Map<String, Integer> sortedMap = new LinkedHashMap<>();
-        for (Map.Entry<String, Integer> entry : entries) {
-            sortedMap.put(entry.getKey(), entry.getValue());
-        }
-        return sortedMap;
+        return map.entrySet().stream()
+                .sorted(Map.Entry.comparingByKey())
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        Map.Entry::getValue,
+                        (oldValue, newValue) -> oldValue,
+                        LinkedHashMap::new));
     }
 
     private static String encodeNbtToString(NbtMap tag) {
-        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        try (NBTOutputStream stream = new NBTOutputStream(new LittleEndianDataOutputStream(byteArrayOutputStream))) {
+        try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+             NBTOutputStream stream = new NBTOutputStream(new LittleEndianDataOutputStream(byteArrayOutputStream))) {
             stream.writeTag(tag);
+            return Base64.getEncoder().encodeToString(byteArrayOutputStream.toByteArray());
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-        return Base64.getEncoder().encodeToString(byteArrayOutputStream.toByteArray());
     }
 
     @Value
