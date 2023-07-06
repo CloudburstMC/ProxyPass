@@ -7,7 +7,6 @@ import lombok.Value;
 import lombok.extern.log4j.Log4j2;
 import org.cloudburstmc.nbt.NBTOutputStream;
 import org.cloudburstmc.nbt.NbtMap;
-import org.cloudburstmc.nbt.NbtType;
 import org.cloudburstmc.nbt.util.stream.LittleEndianDataOutputStream;
 import org.cloudburstmc.protocol.bedrock.BedrockSession;
 import org.cloudburstmc.protocol.bedrock.data.definitions.ItemDefinition;
@@ -111,16 +110,6 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
     }
 
     private void dumpCreativeItems(ItemData[] contents) {
-        // Load up block palette for conversion, if we can find it.
-        Object object = proxy.loadGzipNBT("block_palette.nbt");
-        List<NbtMap> paletteTags = null;
-        if (object instanceof NbtMap) {
-            NbtMap map = (NbtMap) object;
-            paletteTags = map.getList("blocks", NbtType.COMPOUND);
-        } else {
-            log.warn("Failed to load block palette for creative content dump. Output will contain block runtime IDs!");
-        }
-
         List<CreativeItemEntry> entries = new ArrayList<>();
         for (ItemData data : contents) {
             ItemDefinition entry = data.getDefinition();
