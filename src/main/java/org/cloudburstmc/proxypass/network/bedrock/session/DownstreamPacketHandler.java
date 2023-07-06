@@ -18,8 +18,8 @@ import org.cloudburstmc.protocol.bedrock.packet.*;
 import org.cloudburstmc.protocol.common.PacketSignal;
 import org.cloudburstmc.protocol.common.SimpleDefinitionRegistry;
 import org.cloudburstmc.proxypass.ProxyPass;
+import org.cloudburstmc.proxypass.network.bedrock.util.NbtBlockDefinitionRegistry;
 import org.cloudburstmc.proxypass.network.bedrock.util.RecipeUtils;
-import org.cloudburstmc.proxypass.network.bedrock.util.UnknownBlockDefinitionRegistry;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -81,13 +81,12 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
                 .addAll(packet.getItemDefinitions())
                 .add(new SimpleItemDefinition("minecraft:empty", 0, false))
                 .build();
-        UnknownBlockDefinitionRegistry blockDefinitions = new UnknownBlockDefinitionRegistry();
 
         this.session.getPeer().getCodecHelper().setItemDefinitions(itemDefinitions);
         player.getUpstream().getPeer().getCodecHelper().setItemDefinitions(itemDefinitions);
 
-        this.session.getPeer().getCodecHelper().setBlockDefinitions(blockDefinitions);
-        player.getUpstream().getPeer().getCodecHelper().setBlockDefinitions(blockDefinitions);
+        this.session.getPeer().getCodecHelper().setBlockDefinitions(this.proxy.getBlockDefinitions());
+        player.getUpstream().getPeer().getCodecHelper().setBlockDefinitions(this.proxy.getBlockDefinitions());
 
         itemData.sort(Comparator.comparing(o -> o.name));
 
@@ -130,8 +129,8 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
 
             String blockTag = null;
             Integer blockRuntimeId = null;
-            if (data.getBlockDefinition() != null && paletteTags != null) {
-                blockTag = encodeNbtToString(paletteTags.get(data.getBlockDefinition().getRuntimeId()));
+            if (data.getBlockDefinition() instanceof NbtBlockDefinitionRegistry.NbtBlockDefinition definition) {
+                blockTag = encodeNbtToString(definition.tag());
             } else if (data.getBlockDefinition() != null) {
                 blockRuntimeId = data.getBlockDefinition().getRuntimeId();
             }

@@ -24,7 +24,10 @@ public class TestUtils {
             AddEntityPacket.class,      // around it without removing the nice features we have.
             AddItemEntityPacket.class,
             AddPlayerPacket.class,
-            AvailableCommandsPacket.class // We do too much processing on this packet to make it serialise the same.
+            AvailableCommandsPacket.class, // We do too much processing on this packet to make it serialise the same.
+            ClientCacheMissResponsePacket.class,
+            LoginPacket.class,
+            CompressedBiomeDefinitionListPacket.class
     );
 
     public static void testPacket(BedrockSession session, BedrockPacketWrapper wrapper) {

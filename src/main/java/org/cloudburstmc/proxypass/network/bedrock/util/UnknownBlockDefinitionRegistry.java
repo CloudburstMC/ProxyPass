@@ -15,7 +15,7 @@ public class UnknownBlockDefinitionRegistry implements DefinitionRegistry<BlockD
         return true;
     }
 
-    private record UnknownDefinition(int runtimeId) implements BlockDefinition {
+    record UnknownDefinition(int runtimeId) implements BlockDefinition {
 
         @Override
         public int getRuntimeId() {
