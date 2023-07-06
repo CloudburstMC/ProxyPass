@@ -1,7 +1,8 @@
 package org.cloudburstmc.proxypass.network.bedrock.util;
 
-import com.nimbusds.jose.shaded.json.JSONObject;
+import org.cloudburstmc.protocol.bedrock.util.JsonUtils;
 import org.cloudburstmc.proxypass.network.bedrock.session.ProxyPlayerSession;
+import org.jose4j.json.internal.json_simple.JSONObject;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;
@@ -18,7 +19,7 @@ public class SkinUtils {
     public static final int SKIN_128_128_SIZE = 128 * 128 * PIXEL_SIZE;
 
     public static void saveSkin(ProxyPlayerSession session, JSONObject skinData) {
-        byte[] skin = Base64.getDecoder().decode(skinData.getAsString("SkinData"));
+        byte[] skin = Base64.getDecoder().decode(JsonUtils.childAsType(skinData, "SkinData", String.class));
         int width, height;
         if (skin.length == SINGLE_SKIN_SIZE) {
             width = 64;
@@ -37,10 +38,10 @@ public class SkinUtils {
         }
         saveImage(session, width, height, skin, "skin");
 
-        byte[] cape = Base64.getDecoder().decode(skinData.getAsString("CapeData"));
+        byte[] cape = Base64.getDecoder().decode(JsonUtils.childAsType(skinData, "CapeData", String.class));
         saveImage(session, 64, 32, cape, "cape");
 
-        byte[] geometry = Base64.getDecoder().decode(skinData.getAsString("SkinGeometry"));
+        byte[] geometry = Base64.getDecoder().decode(JsonUtils.childAsType(skinData, "SkinGeometry", String.class));
         session.getLogger().saveJson("geometry", geometry);
     }
 

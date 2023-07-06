@@ -1,20 +1,23 @@
 package org.cloudburstmc.proxypass.network.bedrock.session;
 
-import com.nimbusds.jwt.SignedJWT;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.cloudburstmc.protocol.bedrock.packet.*;
 import org.cloudburstmc.protocol.bedrock.util.EncryptionUtils;
+import org.cloudburstmc.protocol.bedrock.util.JsonUtils;
 import org.cloudburstmc.protocol.common.PacketSignal;
 import org.cloudburstmc.proxypass.ProxyPass;
+import org.jose4j.json.JsonUtil;
+import org.jose4j.json.internal.json_simple.JSONObject;
+import org.jose4j.jws.JsonWebSignature;
+import org.jose4j.jwx.HeaderParameterNames;
+import org.jose4j.lang.JoseException;
 
 import javax.crypto.SecretKey;
-import java.net.URI;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.interfaces.ECPublicKey;
 import java.security.spec.InvalidKeySpecException;
-import java.text.ParseException;
 import java.util.Base64;
 
 @Log4j2
@@ -36,13 +39,15 @@ public class DownstreamInitialPacketHandler implements BedrockPacketHandler {
 
     public PacketSignal handle(ServerToClientHandshakePacket packet) {
         try {
-            SignedJWT saltJwt = SignedJWT.parse(packet.getJwt());
-            URI x5u = saltJwt.getHeader().getX509CertURL();
-            ECPublicKey serverKey = EncryptionUtils.generateKey(x5u.toASCIIString());
+            JsonWebSignature jws = new JsonWebSignature();
+            jws.setCompactSerialization(packet.getJwt());
+            JSONObject saltJwt = new JSONObject(JsonUtil.parseJson(jws.getUnverifiedPayload()));
+            String x5u = jws.getHeader(HeaderParameterNames.X509_URL);
+            ECPublicKey serverKey = EncryptionUtils.parseKey(x5u);
             SecretKey key = EncryptionUtils.getSecretKey(this.player.getProxyKeyPair().getPrivate(), serverKey,
-                    Base64.getDecoder().decode(saltJwt.getJWTClaimsSet().getStringClaim("salt")));
+                    Base64.getDecoder().decode(JsonUtils.childAsType(saltJwt, "salt", String.class)));
             session.enableEncryption(key);
-        } catch (ParseException | NoSuchAlgorithmException | InvalidKeySpecException | InvalidKeyException e) {
+        } catch (JoseException | NoSuchAlgorithmException | InvalidKeySpecException | InvalidKeyException e) {
             throw new RuntimeException(e);
         }
 
