@@ -2,24 +2,25 @@ package org.cloudburstmc.proxypass.network.bedrock.session;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeType;
-import com.google.common.base.Preconditions;
-import com.nimbusds.jose.JOSEException;
-import com.nimbusds.jose.JWSObject;
-import com.nimbusds.jose.crypto.factories.DefaultJWSVerifierFactory;
-import com.nimbusds.jose.shaded.json.JSONObject;
-import com.nimbusds.jwt.SignedJWT;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.cloudburstmc.protocol.bedrock.data.PacketCompressionAlgorithm;
 import org.cloudburstmc.protocol.bedrock.packet.*;
+import org.cloudburstmc.protocol.bedrock.util.ChainValidationResult;
 import org.cloudburstmc.protocol.bedrock.util.EncryptionUtils;
+import org.cloudburstmc.protocol.bedrock.util.JsonUtils;
 import org.cloudburstmc.protocol.common.PacketSignal;
 import org.cloudburstmc.proxypass.ProxyPass;
 import org.cloudburstmc.proxypass.network.bedrock.util.ForgeryUtils;
+import org.jose4j.json.JsonUtil;
+import org.jose4j.json.internal.json_simple.JSONObject;
+import org.jose4j.jws.JsonWebSignature;
+import org.jose4j.lang.JoseException;
 
+import java.security.PublicKey;
 import java.security.interfaces.ECPublicKey;
 import java.util.List;
-import java.util.UUID;
+import java.util.Map;
 
 @Log4j2
 @RequiredArgsConstructor
@@ -29,32 +30,16 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
     private final ProxyPass proxy;
     private JSONObject skinData;
     private JSONObject extraData;
-    private List<SignedJWT> chainData;
+    private List<String> chainData;
     private AuthData authData;
     private ProxyPlayerSession player;
 
-    private static boolean validateChainData(List<SignedJWT> chain) throws Exception {
-        ECPublicKey lastKey = null;
-        boolean validChain = false;
-        for (SignedJWT jwt : chain) {
-            if (!validChain) {
-                validChain = verifyJwt(jwt, EncryptionUtils.getMojangPublicKey());
-            }
+    private static boolean verifyJwt(String jwt, PublicKey key) throws JoseException {
+        JsonWebSignature jws = new JsonWebSignature();
+        jws.setKey(key);
+        jws.setCompactSerialization(jwt);
 
-            if (lastKey != null) {
-                verifyJwt(jwt, lastKey);
-            }
-
-            JsonNode payloadNode = ProxyPass.JSON_MAPPER.readTree(jwt.getPayload().toString());
-            JsonNode ipkNode = payloadNode.get("identityPublicKey");
-            Preconditions.checkState(ipkNode != null && ipkNode.getNodeType() == JsonNodeType.STRING, "identityPublicKey node is missing in chain");
-            lastKey = EncryptionUtils.generateKey(ipkNode.asText());
-        }
-        return validChain;
-    }
-
-    private static boolean verifyJwt(JWSObject jwt, ECPublicKey key) throws JOSEException {
-        return jwt.verify(new DefaultJWSVerifierFactory().createJWSVerifier(jwt.getHeader(), key));
+        return jws.verifySignature();
     }
 
     @Override
@@ -85,32 +70,31 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
 
     @Override
     public PacketSignal handle(LoginPacket packet) {
-        boolean validChain;
         try {
-            validChain = validateChainData(packet.getChain());
+            ChainValidationResult chain = EncryptionUtils.validateChain(packet.getChain());
 
-            log.debug("Is player data valid? {}", validChain);
-            SignedJWT jwt = packet.getChain().get(packet.getChain().size() - 1);
-            JsonNode payload = ProxyPass.JSON_MAPPER.readTree(jwt.getPayload().toBytes());
+            JsonNode payload = ProxyPass.JSON_MAPPER.valueToTree(chain.rawIdentityClaims());
 
             if (payload.get("extraData").getNodeType() != JsonNodeType.OBJECT) {
                 throw new RuntimeException("AuthData was not found!");
             }
 
-            extraData = (JSONObject) jwt.getPayload().toJSONObject().get("extraData");
+            extraData = new JSONObject(JsonUtils.childAsType(chain.rawIdentityClaims(), "extraData", Map.class));
 
-            this.authData = new AuthData(extraData.getAsString("displayName"),
-                    UUID.fromString(extraData.getAsString("identity")), extraData.getAsString("XUID"));
+            this.authData = new AuthData(chain.identityClaims().extraData.displayName,
+                    chain.identityClaims().extraData.identity, chain.identityClaims().extraData.xuid);
 
             if (payload.get("identityPublicKey").getNodeType() != JsonNodeType.STRING) {
                 throw new RuntimeException("Identity Public Key was not found!");
             }
-            ECPublicKey identityPublicKey = EncryptionUtils.generateKey(payload.get("identityPublicKey").textValue());
+            ECPublicKey identityPublicKey = EncryptionUtils.parseKey(payload.get("identityPublicKey").textValue());
 
-            JWSObject clientJwt = packet.getExtra();
+            String clientJwt = packet.getExtra();
             verifyJwt(clientJwt, identityPublicKey);
+            JsonWebSignature jws = new JsonWebSignature();
+            jws.setCompactSerialization(clientJwt);
 
-            skinData = new JSONObject(clientJwt.getPayload().toJSONObject());
+            skinData = new JSONObject(JsonUtil.parseJson(jws.getUnverifiedPayload()));
             chainData = packet.getChain();
             initializeProxySession();
         } catch (Exception e) {
@@ -134,15 +118,16 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
             this.session.setPlayer(proxySession);
 
             try {
-                JWSObject jwt = chainData.get(chainData.size() - 1);
-                JsonNode payload = ProxyPass.JSON_MAPPER.readTree(jwt.getPayload().toBytes());
-                player.getLogger().saveJson("chainData", payload);
+                String jwt = chainData.get(chainData.size() - 1);
+                JsonWebSignature jws = new JsonWebSignature();
+                jws.setCompactSerialization(jwt);
+                player.getLogger().saveJson("chainData", new JSONObject(JsonUtil.parseJson(jws.getUnverifiedPayload())));
                 player.getLogger().saveJson("skinData", this.skinData);
             } catch (Exception e) {
                 log.error("JSON output error: " + e.getMessage(), e);
             }
-            SignedJWT authData = ForgeryUtils.forgeAuthData(proxySession.getProxyKeyPair(), extraData);
-            SignedJWT skinData = ForgeryUtils.forgeSkinData(proxySession.getProxyKeyPair(), this.skinData);
+            String authData = ForgeryUtils.forgeAuthData(proxySession.getProxyKeyPair(), extraData);
+            String skinData = ForgeryUtils.forgeSkinData(proxySession.getProxyKeyPair(), this.skinData);
             chainData.remove(chainData.size() - 1);
             chainData.add(authData);
 

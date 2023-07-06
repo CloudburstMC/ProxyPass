@@ -3,11 +3,11 @@ package org.cloudburstmc.proxypass.network.bedrock.logging;
 import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectWriter;
-import com.nimbusds.jose.shaded.json.JSONObject;
 import lombok.extern.log4j.Log4j2;
 import org.cloudburstmc.protocol.bedrock.BedrockSession;
 import org.cloudburstmc.protocol.bedrock.packet.BedrockPacket;
 import org.cloudburstmc.proxypass.ProxyPass;
+import org.jose4j.json.internal.json_simple.JSONObject;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;

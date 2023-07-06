@@ -25,6 +25,7 @@ dependencies {
     compileOnly(libs.lombok)
     annotationProcessor(libs.lombok)
     compileOnly(libs.jsr305)
+    implementation(libs.bedrock.codec)
     implementation(libs.bedrock.connection)
     implementation(libs.jackson.databind)
     implementation(libs.jackson.dataformat.yaml)
