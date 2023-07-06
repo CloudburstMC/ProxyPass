@@ -17,6 +17,9 @@ import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.concurrent.Executors;
@@ -27,6 +30,11 @@ import java.util.function.Supplier;
 
 @Log4j2
 public class SessionLogger {
+
+    private static final String PATTERN_FORMAT = "HH:mm:ss:SSS";
+    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern(PATTERN_FORMAT)
+            .withZone(ZoneId.systemDefault());
+    private static final String LOG_FORMAT = "[%s] [%s] - %s";
 
     private static final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
 
@@ -90,21 +98,22 @@ public class SessionLogger {
         String logPrefix = getLogPrefix(upstream);
         if (!proxy.isIgnoredPacket(packet.getClass())) {
             if (session.isLogging() && log.isTraceEnabled()) {
-                log.trace(logPrefix + " {}: {}", session.getSocketAddress(), packet);
+                log.trace("{} {}: {}", logPrefix, session.getSocketAddress(), packet);
             }
 
+            String logMessage = String.format(LOG_FORMAT, FORMATTER.format(Instant.now()), logPrefix, packet);
             if (proxy.getConfiguration().isLoggingPackets()) {
-                logToBuffer(() -> logPrefix + packet);
+                logToBuffer(() -> logMessage);
             }
 
             if (proxy.getConfiguration().isLoggingPackets() && proxy.getConfiguration().getLogTo().logToConsole) {
-                System.out.println(logPrefix + packet);
+                System.out.println(logMessage);
             }
         }
     }
 
     private String getLogPrefix(boolean upstream) {
-        return upstream ? "[SERVER BOUND]  -  " : "[CLIENT BOUND]  -  ";
+        return upstream ? "SERVER BOUND" : "CLIENT BOUND";
     }
 
     private void logToBuffer(Supplier<String> supplier) {

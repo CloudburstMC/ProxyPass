@@ -9,15 +9,23 @@ import org.cloudburstmc.protocol.bedrock.BedrockSession;
 import org.cloudburstmc.protocol.bedrock.codec.BedrockCodecHelper;
 import org.cloudburstmc.protocol.bedrock.codec.PacketSerializeException;
 import org.cloudburstmc.protocol.bedrock.netty.BedrockPacketWrapper;
-import org.cloudburstmc.protocol.bedrock.packet.BedrockPacket;
-import org.cloudburstmc.protocol.bedrock.packet.UnknownPacket;
+import org.cloudburstmc.protocol.bedrock.packet.*;
 import org.cloudburstmc.proxypass.ProxyPass;
 
 import java.util.Objects;
+import java.util.Set;
 
 @Log4j2
 @UtilityClass
 public class TestUtils {
+
+    private static final Set<Class<?>> IGNORE_BUFFER_TEST = Set.of(
+            SetEntityDataPacket.class,  // Entity data flags are never serialised the same as vanilla and there is no way
+            AddEntityPacket.class,      // around it without removing the nice features we have.
+            AddItemEntityPacket.class,
+            AddPlayerPacket.class,
+            AvailableCommandsPacket.class // We do too much processing on this packet to make it serialise the same.
+    );
 
     public static void testPacket(BedrockSession session, BedrockPacketWrapper wrapper) {
         BedrockPacket packet = wrapper.getPacket();
@@ -31,7 +39,7 @@ public class TestUtils {
             try {
                 BedrockCodecHelper helper = session.getPeer().getCodecHelper();
                 ProxyPass.CODEC.tryEncode(helper, buffer, packet);
-                if (!originalBuffer.equals(buffer)) {
+                if (!IGNORE_BUFFER_TEST.contains(packet.getClass()) && !originalBuffer.equals(buffer)) {
                     // Something went wrong in serialization.
                     log.warn("Packet's buffers not equal for {}:\n Original  : {}\nRe-encoded : {}",
                             packet.getClass().getSimpleName(), ByteBufUtil.hexDump(originalBuffer), ByteBufUtil.hexDump(buffer));
