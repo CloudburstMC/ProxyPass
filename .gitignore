@@ -192,6 +192,9 @@ dist/
 nbdist/
 .nb-gradle/
 
+### VSCode ###
+.vscode/*
+
 ### Gradle ###
 .gradle
 **/build/
