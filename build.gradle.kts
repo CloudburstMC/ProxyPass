@@ -15,10 +15,11 @@ java {
 }
 
 repositories {
-    mavenLocal()
+    //mavenLocal()
     mavenCentral()
     maven("https://repo.opencollab.dev/maven-snapshots")
     maven("https://repo.opencollab.dev/maven-releases")
+    maven("https://maven.lenni0451.net/snapshots")
 }
 
 dependencies {
@@ -32,6 +33,7 @@ dependencies {
     implementation(libs.common)
     implementation(libs.jansi)
     implementation(libs.jline.reader)
+    implementation(libs.minecraftauth)
 }
 
 application {
@@ -47,4 +49,14 @@ tasks.shadowJar {
 tasks.named<JavaExec>("run") {
     workingDir = projectDir.resolve("run")
     workingDir.mkdir()
+}
+
+listOf("distZip", "distTar", "startScripts").forEach { taskName ->
+    tasks.named(taskName) {
+        dependsOn("shadowJar")
+    }
+}
+
+tasks.named("startShadowScripts") {
+    dependsOn("jar")
 }
