@@ -243,8 +243,8 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
             initMojangPublicKey();
         }
 
+        // adapted from https://github.com/RaphiMC/ViaBedrock/blob/main/src/main/java/net/raphimc/viabedrock/protocol/packets/LoginPackets.java#L276-L291
         Jws<Claims> mojangJwt = Jwts.parserBuilder().setAllowedClockSkewSeconds(60).setSigningKey(MOJANG_PUBLIC_KEY).deserializeJsonWith(gsonDeserializer).build().parseClaimsJws(mcChain.mojangJwt());
-
         String selfSignedJwt = Jwts.builder()
             .signWith(mcChain.privateKey(), SignatureAlgorithm.ES384)
             .setHeaderParam("x5u", publicKey)

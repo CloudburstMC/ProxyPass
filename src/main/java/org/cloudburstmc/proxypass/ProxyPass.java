@@ -58,8 +58,7 @@ import java.util.function.Consumer;
 @Getter
 public class ProxyPass {
     public static final ObjectMapper JSON_MAPPER;
-    public static final YAMLMapper YAML_MAPPER = (YAMLMapper) new YAMLMapper()
-            .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
+    public static final YAMLMapper YAML_MAPPER = (YAMLMapper) new YAMLMapper().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
     public static final String MINECRAFT_VERSION;
     public static final BedrockCodec CODEC = Bedrock_v594.CODEC;
     public static final int PROTOCOL_VERSION = CODEC.getProtocolVersion();
@@ -94,8 +93,7 @@ public class ProxyPass {
         PRETTY_PRINTER.indentArraysWith(indenter);
         PRETTY_PRINTER.indentObjectsWith(indenter);
 
-        JSON_MAPPER = new ObjectMapper().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
-                .setDefaultPrettyPrinter(PRETTY_PRINTER);
+        JSON_MAPPER = new ObjectMapper().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES).setDefaultPrettyPrinter(PRETTY_PRINTER);
         MINECRAFT_VERSION = CODEC.getMinecraftVersion();
     }
 
@@ -131,8 +129,7 @@ public class ProxyPass {
         log.info("Loading configuration...");
         Path configPath = Paths.get(".").resolve("config.yml");
         if (Files.notExists(configPath) || !Files.isRegularFile(configPath)) {
-            Files.copy(ProxyPass.class.getClassLoader().getResourceAsStream("config.yml"), configPath,
-                    StandardCopyOption.REPLACE_EXISTING);
+            Files.copy(ProxyPass.class.getClassLoader().getResourceAsStream("config.yml"), configPath, StandardCopyOption.REPLACE_EXISTING);
         }
 
         configuration = Configuration.load(configPath);
@@ -256,9 +253,8 @@ public class ProxyPass {
 
     public void saveNBT(String dataName, Object dataTag) {
         Path path = dataDir.resolve(dataName + ".dat");
-        try (OutputStream outputStream = Files.newOutputStream(path, StandardOpenOption.CREATE,
-                StandardOpenOption.TRUNCATE_EXISTING);
-                NBTOutputStream nbtOutputStream = NbtUtils.createNetworkWriter(outputStream)) {
+        try (OutputStream outputStream = Files.newOutputStream(path, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+             NBTOutputStream nbtOutputStream = NbtUtils.createNetworkWriter(outputStream)) {
             nbtOutputStream.writeTag(dataTag);
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -268,7 +264,7 @@ public class ProxyPass {
     public Object loadNBT(String dataName) {
         Path path = dataDir.resolve(dataName + ".dat");
         try (InputStream inputStream = Files.newInputStream(path);
-                NBTInputStream nbtInputStream = NbtUtils.createNetworkReader(inputStream)) {
+            NBTInputStream nbtInputStream = NbtUtils.createNetworkReader(inputStream)) {
             return nbtInputStream.readTag();
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -278,7 +274,7 @@ public class ProxyPass {
     public Object loadGzipNBT(String dataName) {
         Path path = dataDir.resolve(dataName);
         try (InputStream inputStream = Files.newInputStream(path);
-                NBTInputStream nbtInputStream = NbtUtils.createGZIPReader(inputStream)) {
+            NBTInputStream nbtInputStream = NbtUtils.createGZIPReader(inputStream)) {
             return nbtInputStream.readTag();
         } catch (IOException e) {
             return null;
@@ -287,8 +283,7 @@ public class ProxyPass {
 
     public void saveJson(String name, Object object) {
         Path outPath = dataDir.resolve(name);
-        try (OutputStream outputStream = Files.newOutputStream(outPath, StandardOpenOption.TRUNCATE_EXISTING,
-                StandardOpenOption.CREATE)) {
+        try (OutputStream outputStream = Files.newOutputStream(outPath, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE)) {
             ProxyPass.JSON_MAPPER.writer(PRETTY_PRINTER).writeValue(outputStream, object);
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -307,8 +302,7 @@ public class ProxyPass {
     public void saveMojangson(String name, NbtMap nbt) {
         Path outPath = dataDir.resolve(name);
         try {
-            Files.write(outPath, nbt.toString().getBytes(StandardCharsets.UTF_8), StandardOpenOption.TRUNCATE_EXISTING,
-                    StandardOpenOption.CREATE);
+            Files.write(outPath, nbt.toString().getBytes(StandardCharsets.UTF_8), StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -333,6 +327,7 @@ public class ProxyPass {
                         try {
                             Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
                             clipboard.setContents(new StringSelection(msaDeviceCode.userCode()), null);
+                            log.info("Copied code to clipboard");
                             Desktop.getDesktop().browse(new URI(msaDeviceCode.verificationUri()));
                         } catch (IOException | URISyntaxException e) {
                             log.error("Failed to open browser", e);

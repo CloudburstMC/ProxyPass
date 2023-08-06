@@ -5,8 +5,8 @@
 Proxy pass allows developers to MITM a vanilla client and server without modifying them. This allows for easy testing 
 of the Bedrock Edition protocol and observing vanilla network behavior.
 
-__ProxyPass requires  Java 8 u162 or later to function correctly due to the encryption used during login__<br>
-`online-mode` __needs to be set to__ `false` __in__ `server.properties` __so that ProxyPass can communicate with your Bedrock Dedicated Server.__
+__ProxyPass requires  Java 17 or later<br>
+If using ProxyPass in offline mode (default), `online-mode` __needs to be set to__ `false` __in__ `server.properties` __so that ProxyPass can communicate with your Bedrock Dedicated Server.__
 
 ### Building & Running
 To produce a jar file, run `./gradlew shadowJar` in the project root directory. This will produce a jar file in the `build/libs` directory.
