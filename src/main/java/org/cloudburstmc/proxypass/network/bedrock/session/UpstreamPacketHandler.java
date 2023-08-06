@@ -42,6 +42,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.security.KeyFactory;
+import java.security.KeyPair;
 import java.security.PublicKey;
 import java.security.interfaces.ECPublicKey;
 import java.security.spec.X509EncodedKeySpec;
@@ -71,6 +72,7 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
 
     private final ProxyServerSession session;
     private final ProxyPass proxy;
+    private final StepMCChain.MCChain mcChain;
     private JSONObject skinData;
     private JSONObject extraData;
     private List<String> chainData;
@@ -138,8 +140,13 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
             jws.setCompactSerialization(clientJwt);
 
             skinData = new JSONObject(JsonUtil.parseJson(jws.getUnverifiedPayload()));
-            // chainData = packet.getChain();
-            initializeProxySession();
+
+            if (mcChain == null) {
+                chainData = packet.getChain();
+                initializeOfflineProxySession();
+            } else {
+                initializeOnlineProxySession();
+            }
         } catch (Exception e) {
             session.disconnect("disconnectionScreen.internalError.cantConnect");
             throw new RuntimeException("Unable to complete login", e);
@@ -147,47 +154,91 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
         return PacketSignal.HANDLED;
     }
 
-    private void initializeProxySession() {
+    private void initializeOfflineProxySession() {
         log.debug("Initializing proxy session");
         this.proxy.newClient(this.proxy.getTargetAddress(), downstream -> {
             downstream.setCodec(ProxyPass.CODEC);
             downstream.setSendSession(this.session);
             this.session.setSendSession(downstream);
 
-            ProxyPlayerSession proxySession = new ProxyPlayerSession(this.session, downstream, this.proxy, this.authData);
+            ProxyPlayerSession proxySession = new ProxyPlayerSession(
+                this.session, 
+                downstream, 
+                this.proxy, 
+                this.authData, 
+                EncryptionUtils.createKeyPair());
             this.player = proxySession;
 
             downstream.setPlayer(proxySession);
             this.session.setPlayer(proxySession);
 
             try {
-                // String jwt = chainData.get(chainData.size() - 1);
-                // JsonWebSignature jws = new JsonWebSignature();
-                // jws.setCompactSerialization(jwt);
-                // player.getLogger().saveJson("chainData", new JSONObject(JsonUtil.parseJson(jws.getUnverifiedPayload())));
+                String jwt = chainData.get(chainData.size() - 1);
+                JsonWebSignature jws = new JsonWebSignature();
+                jws.setCompactSerialization(jwt);
+                player.getLogger().saveJson("chainData", new JSONObject(JsonUtil.parseJson(jws.getUnverifiedPayload())));
                 player.getLogger().saveJson("skinData", this.skinData);
             } catch (Exception e) {
                 log.error("JSON output error: " + e.getMessage(), e);
             }
-            // String authData = ForgeryUtils.forgeAuthData(proxySession.getProxyKeyPair(), extraData);
+            String authData = ForgeryUtils.forgeAuthData(proxySession.getProxyKeyPair(), extraData);
             String skinData = ForgeryUtils.forgeSkinData(proxySession.getProxyKeyPair(), this.skinData);
-            // chainData.remove(chainData.size() - 1);
-            // chainData.add(authData);
+            chainData.remove(chainData.size() - 1);
+            chainData.add(authData);
 
             LoginPacket login = new LoginPacket();
-            // login.getChain().addAll(chainData);
+            login.getChain().addAll(chainData);
+            login.setExtra(skinData);
+            login.setProtocolVersion(ProxyPass.PROTOCOL_VERSION);
 
+            downstream.setPacketHandler(new DownstreamInitialPacketHandler(downstream, proxySession, this.proxy, login));
+            downstream.setLogging(true);
+
+            RequestNetworkSettingsPacket packet = new RequestNetworkSettingsPacket();
+            packet.setProtocolVersion(ProxyPass.PROTOCOL_VERSION);
+            downstream.sendPacketImmediately(packet);
+
+            //SkinUtils.saveSkin(proxySession, this.skinData);
+        });
+    }
+
+    private void initializeOnlineProxySession() {
+        log.debug("Initializing proxy session");
+        this.proxy.newClient(this.proxy.getTargetAddress(), downstream -> {
             try {
                 if (loginChain == null) {
-                    initLoginChain();
+                    initLoginChain(mcChain);
                 }
-                log.info("Login chain: " + loginChain);
-                loginChain.forEach(item -> {
-                    login.getChain().add(item);
-                });
             } catch (Exception e) {
                 log.error("Failed to get login chain", e);
             }
+
+            downstream.setCodec(ProxyPass.CODEC);
+            downstream.setSendSession(this.session);
+            this.session.setSendSession(downstream);
+
+            ProxyPlayerSession proxySession = new ProxyPlayerSession(
+                this.session, 
+                downstream, 
+                this.proxy, 
+                this.authData, 
+                new KeyPair(mcChain.publicKey(), mcChain.privateKey()));
+            this.player = proxySession;
+
+            downstream.setPlayer(proxySession);
+            this.session.setPlayer(proxySession);
+
+            try {
+                player.getLogger().saveJson("skinData", this.skinData);
+            } catch (Exception e) {
+                log.error("JSON output error: " + e.getMessage(), e);
+            }
+
+            String skinData = ForgeryUtils.forgeSkinData(proxySession.getProxyKeyPair(), this.skinData);
+
+            LoginPacket login = new LoginPacket();
+
+            login.getChain().addAll(loginChain);
 
             login.setExtra(skinData);
             login.setProtocolVersion(ProxyPass.PROTOCOL_VERSION);
@@ -203,24 +254,7 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
         });
     }
 
-    private void initLoginChain() throws Exception {
-        CloseableHttpClient client = MicrosoftConstants.createHttpClient();
-
-        StepMCChain.MCChain mcChain = MinecraftAuth.BEDROCK_DEVICE_CODE_LOGIN.getFromInput(client, new StepMsaDeviceCode.MsaDeviceCodeCallback(msaDeviceCode -> {
-            log.info("Go to " + msaDeviceCode.verificationUri());
-            log.info("Enter code " + msaDeviceCode.userCode());
-
-            if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
-                try {
-                    Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
-                    clipboard.setContents(new StringSelection(msaDeviceCode.userCode()), null);
-                    Desktop.getDesktop().browse(new URI(msaDeviceCode.verificationUri()));
-                } catch (IOException | URISyntaxException e) {
-                    log.error("Failed to open browser", e);
-                }
-            }
-        }));
-
+    private void initLoginChain(StepMCChain.MCChain mcChain) throws Exception {
         String publicKey = Base64.getEncoder().encodeToString(mcChain.publicKey().getEncoded());
 
         GsonDeserializer<Map<String, ?>> gsonDeserializer = new GsonDeserializer<>(new GsonBuilder().setObjectToNumberStrategy(ToNumberPolicy.LONG_OR_DOUBLE).disableHtmlEscaping().create());

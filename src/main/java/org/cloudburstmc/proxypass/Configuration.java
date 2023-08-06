@@ -23,6 +23,8 @@ public class Configuration {
     private Address proxy;
     private Address destination;
 
+    @JsonProperty("online-mode")
+    private boolean onlineMode = false;
     @JsonProperty("packet-testing")
     private boolean packetTesting = false;
     @JsonProperty("log-packets")
