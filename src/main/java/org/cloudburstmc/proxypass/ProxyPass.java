@@ -158,12 +158,12 @@ public class ProxyPass {
 
         if (onlineMode) {
             log.info("Online mode is enabled. Starting auth process...");
-
             try {
                 mcChain = getMcChain();
-                log.info("Successfully logged in as " + mcChain.displayName());
+                log.info("Successfully logged in as {}", mcChain.displayName());
             } catch (Exception e) {
-                log.error("Failed to get login chain", e);
+                log.error("Setting to offline mode due to failure to get login chain:", e);
+                onlineMode = false;
             }
         }
 

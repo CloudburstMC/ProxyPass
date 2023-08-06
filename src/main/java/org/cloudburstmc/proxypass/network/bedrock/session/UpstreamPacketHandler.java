@@ -11,12 +11,7 @@ import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.gson.io.GsonDeserializer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
-import net.raphimc.mcauth.MinecraftAuth;
 import net.raphimc.mcauth.step.bedrock.StepMCChain;
-import net.raphimc.mcauth.step.bedrock.StepPlayFabToken;
-import net.raphimc.mcauth.step.msa.StepMsaDeviceCode;
-import net.raphimc.mcauth.util.MicrosoftConstants;
-import org.apache.http.impl.client.CloseableHttpClient;
 import org.cloudburstmc.protocol.bedrock.data.PacketCompressionAlgorithm;
 import org.cloudburstmc.protocol.bedrock.packet.BedrockPacketHandler;
 import org.cloudburstmc.protocol.bedrock.packet.LoginPacket;
@@ -34,13 +29,6 @@ import org.jose4j.json.internal.json_simple.JSONObject;
 import org.jose4j.jws.JsonWebSignature;
 import org.jose4j.lang.JoseException;
 
-import java.awt.Toolkit;
-import java.awt.datatransfer.Clipboard;
-import java.awt.datatransfer.StringSelection;
-import java.awt.Desktop;
-import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.PublicKey;
@@ -126,9 +114,6 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
 
             extraData = new JSONObject(JsonUtils.childAsType(chain.rawIdentityClaims(), "extraData", Map.class));
 
-            this.authData = new AuthData(chain.identityClaims().extraData.displayName,
-                    chain.identityClaims().extraData.identity, chain.identityClaims().extraData.xuid);
-
             if (payload.get("identityPublicKey").getNodeType() != JsonNodeType.STRING) {
                 throw new RuntimeException("Identity Public Key was not found!");
             }
@@ -142,9 +127,14 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
             skinData = new JSONObject(JsonUtil.parseJson(jws.getUnverifiedPayload()));
 
             if (mcChain == null) {
+                this.authData = new AuthData(chain.identityClaims().extraData.displayName,
+                    chain.identityClaims().extraData.identity, chain.identityClaims().extraData.xuid);
                 chainData = packet.getChain();
+
                 initializeOfflineProxySession();
             } else {
+                this.authData = new AuthData(mcChain.displayName(), mcChain.id(), mcChain.xuid());
+                
                 initializeOnlineProxySession();
             }
         } catch (Exception e) {
