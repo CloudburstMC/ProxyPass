@@ -45,19 +45,6 @@ import java.util.Map;
 @Log4j2
 @RequiredArgsConstructor
 public class UpstreamPacketHandler implements BedrockPacketHandler {
-    private static final ECPublicKey MOJANG_PUBLIC_KEY;
-    private static List<String> loginChain;
-
-    static {
-        try {
-            MOJANG_PUBLIC_KEY = (ECPublicKey) KeyFactory.getInstance("EC").generatePublic(new X509EncodedKeySpec(Base64.getDecoder().decode(
-                "MHYwEAYHKoZIzj0CAQYFK4EEACIDYgAE8ELkixyLcwlZryUQcu1TvPOmI2B7vX83ndnWRUaXm74wFfa5f/lwQNTfrLVHa2PmenpGI6JhIMUJaWZrjmMj90NoKNFSNBuKdm8rYiXsfaz3K36x/1U26HpG0ZxK/V1V"
-            )));
-        } catch (Throwable e) {
-            throw new RuntimeException("Could not initialize the required cryptography for online login", e);
-        }
-    }
-
     private final ProxyServerSession session;
     private final ProxyPass proxy;
     private final StepMCChain.MCChain mcChain;
@@ -66,6 +53,9 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
     private List<String> chainData;
     private AuthData authData;
     private ProxyPlayerSession player;
+
+    private static ECPublicKey MOJANG_PUBLIC_KEY;
+    private static List<String> onlineLoginChain;
 
     private static boolean verifyJwt(String jwt, PublicKey key) throws JoseException {
         JsonWebSignature jws = new JsonWebSignature();
@@ -134,7 +124,7 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
                 initializeOfflineProxySession();
             } else {
                 this.authData = new AuthData(mcChain.displayName(), mcChain.id(), mcChain.xuid());
-                
+
                 initializeOnlineProxySession();
             }
         } catch (Exception e) {
@@ -196,8 +186,8 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
         log.debug("Initializing proxy session");
         this.proxy.newClient(this.proxy.getTargetAddress(), downstream -> {
             try {
-                if (loginChain == null) {
-                    initLoginChain(mcChain);
+                if (onlineLoginChain == null) {
+                    initOnlineLoginChain(mcChain);
                 }
             } catch (Exception e) {
                 log.error("Failed to get login chain", e);
@@ -228,7 +218,7 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
 
             LoginPacket login = new LoginPacket();
 
-            login.getChain().addAll(loginChain);
+            login.getChain().addAll(onlineLoginChain);
 
             login.setExtra(skinData);
             login.setProtocolVersion(ProxyPass.PROTOCOL_VERSION);
@@ -244,10 +234,15 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
         });
     }
 
-    private void initLoginChain(StepMCChain.MCChain mcChain) throws Exception {
+    private void initOnlineLoginChain(StepMCChain.MCChain mcChain) throws Exception {
         String publicKey = Base64.getEncoder().encodeToString(mcChain.publicKey().getEncoded());
 
         GsonDeserializer<Map<String, ?>> gsonDeserializer = new GsonDeserializer<>(new GsonBuilder().setObjectToNumberStrategy(ToNumberPolicy.LONG_OR_DOUBLE).disableHtmlEscaping().create());
+
+        if (MOJANG_PUBLIC_KEY == null) {
+            initMojangPublicKey();
+        }
+
         Jws<Claims> mojangJwt = Jwts.parserBuilder().setAllowedClockSkewSeconds(60).setSigningKey(MOJANG_PUBLIC_KEY).deserializeJsonWith(gsonDeserializer).build().parseClaimsJws(mcChain.mojangJwt());
 
         String selfSignedJwt = Jwts.builder()
@@ -259,7 +254,16 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
             .setNotBefore(Date.from(Instant.now().minus(1, ChronoUnit.MINUTES)))
             .compact();
 
-        loginChain = new ArrayList<>(List.of(selfSignedJwt, mcChain.mojangJwt(), mcChain.identityJwt()));
+        onlineLoginChain = new ArrayList<>(List.of(selfSignedJwt, mcChain.mojangJwt(), mcChain.identityJwt()));
     }
 
+    private void initMojangPublicKey() {
+        try {
+            MOJANG_PUBLIC_KEY = (ECPublicKey) KeyFactory.getInstance("EC").generatePublic(new X509EncodedKeySpec(Base64.getDecoder().decode(
+                "MHYwEAYHKoZIzj0CAQYFK4EEACIDYgAE8ELkixyLcwlZryUQcu1TvPOmI2B7vX83ndnWRUaXm74wFfa5f/lwQNTfrLVHa2PmenpGI6JhIMUJaWZrjmMj90NoKNFSNBuKdm8rYiXsfaz3K36x/1U26HpG0ZxK/V1V"
+            )));
+        } catch (Throwable e) {
+            throw new RuntimeException("Could not initialize the required cryptography for online login", e);
+        }
+    }
 }
