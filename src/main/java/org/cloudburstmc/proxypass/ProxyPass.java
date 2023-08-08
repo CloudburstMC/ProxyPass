@@ -334,6 +334,7 @@ public class ProxyPass {
                         }
                     }
                 }));
+        client.close();
         return mcChain;
     }
 }
