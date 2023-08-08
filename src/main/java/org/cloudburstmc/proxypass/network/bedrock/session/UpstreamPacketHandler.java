@@ -40,7 +40,7 @@ import java.util.Map;
 public class UpstreamPacketHandler implements BedrockPacketHandler {
     private final ProxyServerSession session;
     private final ProxyPass proxy;
-    private final StepMCChain.MCChain mcChain;
+    private final Account account;
     private JSONObject skinData;
     private JSONObject extraData;
     private List<String> chainData;
@@ -109,14 +109,14 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
 
             skinData = new JSONObject(JsonUtil.parseJson(jws.getUnverifiedPayload()));
 
-            if (mcChain == null) {
+            if (account == null) {
                 this.authData = new AuthData(chain.identityClaims().extraData.displayName,
                     chain.identityClaims().extraData.identity, chain.identityClaims().extraData.xuid);
                 chainData = packet.getChain();
 
                 initializeOfflineProxySession();
             } else {
-                this.authData = new AuthData(mcChain.displayName(), mcChain.id(), mcChain.xuid());
+                this.authData = new AuthData(account.mcChain().displayName(), account.mcChain().id(), account.mcChain().xuid());
 
                 initializeOnlineProxySession();
             }
@@ -180,7 +180,7 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
         this.proxy.newClient(this.proxy.getTargetAddress(), downstream -> {
             try {
                 if (onlineLoginChain == null) {
-                    initOnlineLoginChain(mcChain);
+                    initOnlineLoginChain(account.mcChain());
                 }
             } catch (Exception e) {
                 log.error("Failed to get login chain", e);
@@ -195,7 +195,7 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
                 downstream, 
                 this.proxy, 
                 this.authData, 
-                new KeyPair(mcChain.publicKey(), mcChain.privateKey()));
+                new KeyPair(account.mcChain().publicKey(), account.mcChain().privateKey()));
             this.player = proxySession;
 
             downstream.setPlayer(proxySession);

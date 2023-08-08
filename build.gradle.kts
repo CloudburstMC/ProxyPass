@@ -15,7 +15,7 @@ java {
 }
 
 repositories {
-    //mavenLocal()
+    mavenLocal()
     mavenCentral()
     maven("https://repo.opencollab.dev/maven-snapshots")
     maven("https://repo.opencollab.dev/maven-releases")

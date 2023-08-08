@@ -7,6 +7,7 @@ import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
+import com.google.gson.JsonParser;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
@@ -18,6 +19,7 @@ import lombok.Getter;
 import lombok.extern.log4j.Log4j2;
 import net.raphimc.mcauth.MinecraftAuth;
 import net.raphimc.mcauth.step.bedrock.StepMCChain;
+import net.raphimc.mcauth.step.bedrock.StepPlayFabToken;
 import net.raphimc.mcauth.step.msa.StepMsaDeviceCode;
 import net.raphimc.mcauth.util.MicrosoftConstants;
 import org.apache.http.impl.client.CloseableHttpClient;
@@ -31,6 +33,7 @@ import org.cloudburstmc.protocol.bedrock.codec.v594.Bedrock_v594;
 import org.cloudburstmc.protocol.bedrock.data.definitions.BlockDefinition;
 import org.cloudburstmc.protocol.bedrock.netty.initializer.BedrockChannelInitializer;
 import org.cloudburstmc.protocol.common.DefinitionRegistry;
+import org.cloudburstmc.proxypass.network.bedrock.session.Account;
 import org.cloudburstmc.proxypass.network.bedrock.session.ProxyClientSession;
 import org.cloudburstmc.proxypass.network.bedrock.session.ProxyServerSession;
 import org.cloudburstmc.proxypass.network.bedrock.session.UpstreamPacketHandler;
@@ -106,6 +109,7 @@ public class ProxyPass {
     private Channel server;
     private int maxClients = 0;
     private boolean onlineMode = false;
+    private boolean saveAuthDetails = false;
     private InetSocketAddress targetAddress;
     private InetSocketAddress proxyAddress;
     private Configuration configuration;
@@ -113,7 +117,7 @@ public class ProxyPass {
     private Path sessionsDir;
     private Path dataDir;
     private DefinitionRegistry<BlockDefinition> blockDefinitions;
-    private static StepMCChain.MCChain mcChain;
+    private static Account account;
 
     public static void main(String[] args) {
         ResourceLeakDetector.setLevel(ResourceLeakDetector.Level.DISABLED);
@@ -138,6 +142,7 @@ public class ProxyPass {
         targetAddress = configuration.getDestination().getAddress();
         maxClients = configuration.getMaxClients();
         onlineMode = configuration.isOnlineMode();
+        saveAuthDetails = configuration.isSaveAuthDetails();
 
         configuration.getIgnoredPackets().forEach(s -> {
             try {
@@ -156,8 +161,8 @@ public class ProxyPass {
         if (onlineMode) {
             log.info("Online mode is enabled. Starting auth process...");
             try {
-                mcChain = getMcChain();
-                log.info("Successfully logged in as {}", mcChain.displayName());
+                account = getAuthenticatedAccount(saveAuthDetails);
+                log.info("Successfully logged in as {}", account.mcChain().displayName());
             } catch (Exception e) {
                 log.error("Setting to offline mode due to failure to get login chain:", e);
                 onlineMode = false;
@@ -191,7 +196,7 @@ public class ProxyPass {
 
                     @Override
                     protected void initSession(ProxyServerSession session) {
-                        session.setPacketHandler(new UpstreamPacketHandler(session, ProxyPass.this, mcChain));
+                        session.setPacketHandler(new UpstreamPacketHandler(session, ProxyPass.this, account));
                     }
                 })
                 .bind(this.proxyAddress)
@@ -316,25 +321,44 @@ public class ProxyPass {
         return maxClients > 0 && this.clients.size() >= maxClients;
     }
 
-    private StepMCChain.MCChain getMcChain() throws Exception {
+    private Account getAuthenticatedAccount(boolean saveAuthDetails) throws Exception {
+        Path authPath = Paths.get(".").resolve("auth.json");
         CloseableHttpClient client = MicrosoftConstants.createHttpClient();
-        StepMCChain.MCChain mcChain = MinecraftAuth.BEDROCK_DEVICE_CODE_LOGIN.getFromInput(client,
-                new StepMsaDeviceCode.MsaDeviceCodeCallback(msaDeviceCode -> {
-                    log.info("Go to " + msaDeviceCode.verificationUri());
-                    log.info("Enter code " + msaDeviceCode.userCode());
+        Account account;
 
-                    if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
-                        try {
-                            Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
-                            clipboard.setContents(new StringSelection(msaDeviceCode.userCode()), null);
-                            log.info("Copied code to clipboard");
-                            Desktop.getDesktop().browse(new URI(msaDeviceCode.verificationUri()));
-                        } catch (IOException | URISyntaxException e) {
-                            log.error("Failed to open browser", e);
+        if (Files.notExists(authPath) || !Files.isRegularFile(authPath) || !saveAuthDetails) {
+            StepMCChain.MCChain mcChain = MinecraftAuth.BEDROCK_DEVICE_CODE_LOGIN.getFromInput(client,
+                    new StepMsaDeviceCode.MsaDeviceCodeCallback(msaDeviceCode -> {
+                        log.info("Go to " + msaDeviceCode.verificationUri());
+                        log.info("Enter code " + msaDeviceCode.userCode());
+
+                        if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
+                            try {
+                                Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
+                                clipboard.setContents(new StringSelection(msaDeviceCode.userCode()), null);
+                                log.info("Copied code to clipboard");
+                                Desktop.getDesktop().browse(new URI(msaDeviceCode.verificationUri()));
+                            } catch (IOException | URISyntaxException e) {
+                                log.error("Failed to open browser", e);
+                            }
                         }
-                    }
-                }));
+                    }));
+            StepPlayFabToken.PlayFabToken playFabToken = MinecraftAuth.BEDROCK_PLAY_FAB_TOKEN.getFromInput(client, mcChain.prevResult().fullXblSession());
+            account = new Account(mcChain, playFabToken);
+
+            if (saveAuthDetails) {
+                Files.write(authPath, account.toJson().toString().getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+            }
+
+            client.close();
+            return account;
+        }
+
+        String accountString = new String(Files.readAllBytes(authPath), StandardCharsets.UTF_8);
+        account = new Account(JsonParser.parseString(accountString).getAsJsonObject());
+        account.refresh(client);
+        Files.write(authPath, account.toJson().toString().getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
         client.close();
-        return mcChain;
+        return account;
     }
 }
