@@ -2,13 +2,6 @@ package org.cloudburstmc.proxypass.network.bedrock.session;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeType;
-import com.google.gson.GsonBuilder;
-import com.google.gson.ToNumberPolicy;
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Jws;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
-import io.jsonwebtoken.gson.io.GsonDeserializer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import net.raphimc.mcauth.step.bedrock.StepMCChain;
@@ -27,6 +20,9 @@ import org.cloudburstmc.proxypass.network.bedrock.util.ForgeryUtils;
 import org.jose4j.json.JsonUtil;
 import org.jose4j.json.internal.json_simple.JSONObject;
 import org.jose4j.jws.JsonWebSignature;
+import org.jose4j.jwt.JwtClaims;
+import org.jose4j.jwt.consumer.JwtConsumer;
+import org.jose4j.jwt.consumer.JwtConsumerBuilder;
 import org.jose4j.lang.JoseException;
 
 import java.security.KeyFactory;
@@ -34,11 +30,8 @@ import java.security.KeyPair;
 import java.security.PublicKey;
 import java.security.interfaces.ECPublicKey;
 import java.security.spec.X509EncodedKeySpec;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Base64;
-import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
@@ -237,22 +230,31 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
     private void initOnlineLoginChain(StepMCChain.MCChain mcChain) throws Exception {
         String publicKey = Base64.getEncoder().encodeToString(mcChain.publicKey().getEncoded());
 
-        GsonDeserializer<Map<String, ?>> gsonDeserializer = new GsonDeserializer<>(new GsonBuilder().setObjectToNumberStrategy(ToNumberPolicy.LONG_OR_DOUBLE).disableHtmlEscaping().create());
-
         if (MOJANG_PUBLIC_KEY == null) {
             initMojangPublicKey();
         }
 
         // adapted from https://github.com/RaphiMC/ViaBedrock/blob/main/src/main/java/net/raphimc/viabedrock/protocol/packets/LoginPackets.java#L276-L291
-        Jws<Claims> mojangJwt = Jwts.parserBuilder().setAllowedClockSkewSeconds(60).setSigningKey(MOJANG_PUBLIC_KEY).deserializeJsonWith(gsonDeserializer).build().parseClaimsJws(mcChain.mojangJwt());
-        String selfSignedJwt = Jwts.builder()
-            .signWith(mcChain.privateKey(), SignatureAlgorithm.ES384)
-            .setHeaderParam("x5u", publicKey)
-            .claim("certificateAuthority", true)
-            .claim("identityPublicKey", mojangJwt.getHeader().get("x5u"))
-            .setExpiration(Date.from(Instant.now().plus(2, ChronoUnit.DAYS)))
-            .setNotBefore(Date.from(Instant.now().minus(1, ChronoUnit.MINUTES)))
-            .compact();
+        JwtConsumer jwtConsumer = new JwtConsumerBuilder()
+            .setAllowedClockSkewInSeconds(60)
+            .setVerificationKey(MOJANG_PUBLIC_KEY)
+            .build();
+
+        JsonWebSignature mojangJwsObj = (JsonWebSignature) jwtConsumer.process(mcChain.mojangJwt()).getJoseObjects().get(0);
+
+        JwtClaims selfSignedClaims = new JwtClaims();
+        selfSignedClaims.setClaim("certificateAuthority", true);
+        selfSignedClaims.setClaim("identityPublicKey", mojangJwsObj.getHeader("x5u"));
+        selfSignedClaims.setExpirationTimeMinutesInTheFuture(2 * 24 * 60); // 2 days
+        selfSignedClaims.setNotBeforeMinutesInThePast(1);
+
+        JsonWebSignature selfSignedJws = new JsonWebSignature();
+        selfSignedJws.setPayload(selfSignedClaims.toJson());
+        selfSignedJws.setKey(mcChain.privateKey());
+        selfSignedJws.setAlgorithmHeaderValue("ES384");
+        selfSignedJws.setHeader("x5u", publicKey);
+        
+        String selfSignedJwt = selfSignedJws.getCompactSerialization();
 
         onlineLoginChain = new ArrayList<>(List.of(selfSignedJwt, mcChain.mojangJwt(), mcChain.identityJwt()));
     }
