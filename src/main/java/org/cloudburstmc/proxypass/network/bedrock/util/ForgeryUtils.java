@@ -59,7 +59,7 @@ public class ForgeryUtils {
     public static List<String> forgeOnlineAuthData(StepMCChain.MCChain mcChain, ECPublicKey mojangPublicKey) throws InvalidJwtException, JoseException {
         String publicBase64Key = Base64.getEncoder().encodeToString(mcChain.publicKey().getEncoded());
 
-        // adapted from https://github.com/RaphiMC/ViaBedrock/blob/main/src/main/java/net/raphimc/viabedrock/protocol/packets/LoginPackets.java#L276-L291
+        // adapted from https://github.com/RaphiMC/ViaBedrock/blob/a771149fe4492e4f1393cad66758313067840fcc/src/main/java/net/raphimc/viabedrock/protocol/packets/LoginPackets.java#L276-L291
         JwtConsumer consumer = new JwtConsumerBuilder()
             .setAllowedClockSkewInSeconds(60)
             .setVerificationKey(mojangPublicKey)
