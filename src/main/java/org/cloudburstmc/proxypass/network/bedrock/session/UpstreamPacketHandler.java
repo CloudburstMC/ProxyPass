@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
-import net.raphimc.mcauth.step.bedrock.StepMCChain;
 import org.cloudburstmc.protocol.bedrock.data.PacketCompressionAlgorithm;
 import org.cloudburstmc.protocol.bedrock.packet.BedrockPacketHandler;
 import org.cloudburstmc.protocol.bedrock.packet.LoginPacket;
@@ -20,18 +19,11 @@ import org.cloudburstmc.proxypass.network.bedrock.util.ForgeryUtils;
 import org.jose4j.json.JsonUtil;
 import org.jose4j.json.internal.json_simple.JSONObject;
 import org.jose4j.jws.JsonWebSignature;
-import org.jose4j.jwt.JwtClaims;
-import org.jose4j.jwt.consumer.JwtConsumer;
-import org.jose4j.jwt.consumer.JwtConsumerBuilder;
 import org.jose4j.lang.JoseException;
 
-import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.PublicKey;
 import java.security.interfaces.ECPublicKey;
-import java.security.spec.X509EncodedKeySpec;
-import java.util.ArrayList;
-import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 
@@ -47,7 +39,7 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
     private AuthData authData;
     private ProxyPlayerSession player;
 
-    private static ECPublicKey MOJANG_PUBLIC_KEY;
+    private static ECPublicKey mojangPublicKey;
     private static List<String> onlineLoginChain;
 
     private static boolean verifyJwt(String jwt, PublicKey key) throws JoseException {
@@ -154,8 +146,8 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
             } catch (Exception e) {
                 log.error("JSON output error: " + e.getMessage(), e);
             }
-            String authData = ForgeryUtils.forgeAuthData(proxySession.getProxyKeyPair(), extraData);
-            String skinData = ForgeryUtils.forgeSkinData(proxySession.getProxyKeyPair(), this.skinData);
+            String authData = ForgeryUtils.forgeOfflineAuthData(proxySession.getProxyKeyPair(), extraData);
+            String skinData = ForgeryUtils.forgeOfflineSkinData(proxySession.getProxyKeyPair(), this.skinData);
             chainData.remove(chainData.size() - 1);
             chainData.add(authData);
 
@@ -179,8 +171,11 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
         log.debug("Initializing proxy session");
         this.proxy.newClient(this.proxy.getTargetAddress(), downstream -> {
             try {
+                if (mojangPublicKey == null) {
+                    mojangPublicKey = ForgeryUtils.forgeMojangPublicKey();
+                }
                 if (onlineLoginChain == null) {
-                    initOnlineLoginChain(account.mcChain());
+                    onlineLoginChain = ForgeryUtils.forgeOnlineAuthData(account.mcChain(), mojangPublicKey);
                 }
             } catch (Exception e) {
                 log.error("Failed to get login chain", e);
@@ -201,18 +196,16 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
             downstream.setPlayer(proxySession);
             this.session.setPlayer(proxySession);
 
+            String skinData = ForgeryUtils.forgeOnlineSkinData(account, this.skinData, this.proxy.getTargetAddress().getHostString());
+
             try {
                 player.getLogger().saveJson("skinData", this.skinData);
             } catch (Exception e) {
                 log.error("JSON output error: " + e.getMessage(), e);
             }
 
-            String skinData = ForgeryUtils.forgeSkinData(proxySession.getProxyKeyPair(), this.skinData);
-
             LoginPacket login = new LoginPacket();
-
             login.getChain().addAll(onlineLoginChain);
-
             login.setExtra(skinData);
             login.setProtocolVersion(ProxyPass.PROTOCOL_VERSION);
 
@@ -225,47 +218,5 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
 
             //SkinUtils.saveSkin(proxySession, this.skinData);
         });
-    }
-
-    private void initOnlineLoginChain(StepMCChain.MCChain mcChain) throws Exception {
-        String publicKey = Base64.getEncoder().encodeToString(mcChain.publicKey().getEncoded());
-
-        if (MOJANG_PUBLIC_KEY == null) {
-            initMojangPublicKey();
-        }
-
-        // adapted from https://github.com/RaphiMC/ViaBedrock/blob/main/src/main/java/net/raphimc/viabedrock/protocol/packets/LoginPackets.java#L276-L291
-        JwtConsumer jwtConsumer = new JwtConsumerBuilder()
-            .setAllowedClockSkewInSeconds(60)
-            .setVerificationKey(MOJANG_PUBLIC_KEY)
-            .build();
-
-        JsonWebSignature mojangJwsObj = (JsonWebSignature) jwtConsumer.process(mcChain.mojangJwt()).getJoseObjects().get(0);
-
-        JwtClaims selfSignedClaims = new JwtClaims();
-        selfSignedClaims.setClaim("certificateAuthority", true);
-        selfSignedClaims.setClaim("identityPublicKey", mojangJwsObj.getHeader("x5u"));
-        selfSignedClaims.setExpirationTimeMinutesInTheFuture(2 * 24 * 60); // 2 days
-        selfSignedClaims.setNotBeforeMinutesInThePast(1);
-
-        JsonWebSignature selfSignedJws = new JsonWebSignature();
-        selfSignedJws.setPayload(selfSignedClaims.toJson());
-        selfSignedJws.setKey(mcChain.privateKey());
-        selfSignedJws.setAlgorithmHeaderValue("ES384");
-        selfSignedJws.setHeader("x5u", publicKey);
-        
-        String selfSignedJwt = selfSignedJws.getCompactSerialization();
-
-        onlineLoginChain = new ArrayList<>(List.of(selfSignedJwt, mcChain.mojangJwt(), mcChain.identityJwt()));
-    }
-
-    private void initMojangPublicKey() {
-        try {
-            MOJANG_PUBLIC_KEY = (ECPublicKey) KeyFactory.getInstance("EC").generatePublic(new X509EncodedKeySpec(Base64.getDecoder().decode(
-                "MHYwEAYHKoZIzj0CAQYFK4EEACIDYgAE8ELkixyLcwlZryUQcu1TvPOmI2B7vX83ndnWRUaXm74wFfa5f/lwQNTfrLVHa2PmenpGI6JhIMUJaWZrjmMj90NoKNFSNBuKdm8rYiXsfaz3K36x/1U26HpG0ZxK/V1V"
-            )));
-        } catch (Throwable e) {
-            throw new RuntimeException("Could not initialize the required cryptography for online login", e);
-        }
     }
 }
