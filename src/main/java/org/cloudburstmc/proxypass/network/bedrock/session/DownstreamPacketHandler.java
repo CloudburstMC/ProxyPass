@@ -38,13 +38,14 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
         return PacketSignal.UNHANDLED;
     }
 
+    // Handles biome definitions when client-side chunk generation is enabled
     @Override
     public PacketSignal handle(CompressedBiomeDefinitionListPacket packet) {
-        proxy.saveNBT("biome_definitions", packet.getDefinitions());
+        proxy.saveNBT("biome_definitions_compressed", packet.getDefinitions());
         return PacketSignal.UNHANDLED;
     }
 
-    // Handles biome definitions for versions prior to 1.19.80
+    // Handles biome definitions when client-side chunk generation is disabled
     @Override
     public PacketSignal handle(BiomeDefinitionListPacket packet) {
         proxy.saveNBT("biome_definitions", packet.getDefinitions());
