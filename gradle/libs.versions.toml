@@ -8,7 +8,7 @@ jackson-dataformat-yaml = { group = "com.fasterxml.jackson.dataformat", name = "
 common = { group = "com.nukkitx", name = "common", version = "1.0.1-SNAPSHOT" }
 jansi = { group = "org.fusesource.jansi", name = "jansi", version = "2.4.0" }
 jline-reader = { group = "org.jline", name = "jline-reader", version = "3.23.0" }
-minecraftauth = { group = "net.raphimc", name = "MinecraftAuth", version = "2.1.5-SNAPSHOT" }
+minecraftauth = { group = "net.raphimc", name = "MinecraftAuth", version = "2.1.6-SNAPSHOT" }
 
 [plugins]
 shadow = { id = "com.github.johnrengelman.shadow", version = "8.1.1" }
