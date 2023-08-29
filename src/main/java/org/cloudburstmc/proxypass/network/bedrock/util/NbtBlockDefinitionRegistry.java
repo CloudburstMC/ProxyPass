@@ -12,9 +12,10 @@ public class NbtBlockDefinitionRegistry implements DefinitionRegistry<BlockDefin
 
     private final Int2ObjectMap<NbtBlockDefinition> definitions = new Int2ObjectOpenHashMap<>();
 
-    public NbtBlockDefinitionRegistry(List<NbtMap> definitions) {
+    public NbtBlockDefinitionRegistry(List<NbtMap> definitions, boolean hashed) {
+        int counter = 0;
         for (NbtMap definition : definitions) {
-            int runtimeId = BlockPaletteUtils.createHash(definition);
+            int runtimeId = hashed ? BlockPaletteUtils.createHash(definition) : counter++;
             this.definitions.put(runtimeId, new NbtBlockDefinition(runtimeId, definition));
         }
     }

@@ -9,11 +9,13 @@ import org.cloudburstmc.nbt.NBTOutputStream;
 import org.cloudburstmc.nbt.NbtMap;
 import org.cloudburstmc.nbt.util.stream.LittleEndianDataOutputStream;
 import org.cloudburstmc.protocol.bedrock.BedrockSession;
+import org.cloudburstmc.protocol.bedrock.data.definitions.BlockDefinition;
 import org.cloudburstmc.protocol.bedrock.data.definitions.ItemDefinition;
 import org.cloudburstmc.protocol.bedrock.data.definitions.SimpleItemDefinition;
 import org.cloudburstmc.protocol.bedrock.data.inventory.ContainerId;
 import org.cloudburstmc.protocol.bedrock.data.inventory.ItemData;
 import org.cloudburstmc.protocol.bedrock.packet.*;
+import org.cloudburstmc.protocol.common.DefinitionRegistry;
 import org.cloudburstmc.protocol.common.PacketSignal;
 import org.cloudburstmc.protocol.common.SimpleDefinitionRegistry;
 import org.cloudburstmc.proxypass.ProxyPass;
@@ -85,8 +87,16 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
         this.session.getPeer().getCodecHelper().setItemDefinitions(itemDefinitions);
         player.getUpstream().getPeer().getCodecHelper().setItemDefinitions(itemDefinitions);
 
-        this.session.getPeer().getCodecHelper().setBlockDefinitions(this.proxy.getBlockDefinitions());
-        player.getUpstream().getPeer().getCodecHelper().setBlockDefinitions(this.proxy.getBlockDefinitions());
+
+        DefinitionRegistry<BlockDefinition> registry;
+        if (packet.isBlockNetworkIdsHashed()) {
+            registry = this.proxy.getBlockDefinitionsHashed();
+        } else {
+            registry = this.proxy.getBlockDefinitions();
+        }
+
+        this.session.getPeer().getCodecHelper().setBlockDefinitions(registry);
+        player.getUpstream().getPeer().getCodecHelper().setBlockDefinitions(registry);
 
         itemData.sort(Comparator.comparing(o -> o.name));
 

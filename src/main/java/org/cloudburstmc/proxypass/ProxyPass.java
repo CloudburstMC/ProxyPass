@@ -101,6 +101,7 @@ public class ProxyPass {
     private Path sessionsDir;
     private Path dataDir;
     private DefinitionRegistry<BlockDefinition> blockDefinitions;
+    private DefinitionRegistry<BlockDefinition> blockDefinitionsHashed;
 
     public static void main(String[] args) {
         ResourceLeakDetector.setLevel(ResourceLeakDetector.Level.DISABLED);
@@ -143,9 +144,10 @@ public class ProxyPass {
         Object object = this.loadGzipNBT("block_palette.nbt");
 
         if (object instanceof NbtMap map) {
-            this.blockDefinitions = new NbtBlockDefinitionRegistry(map.getList("blocks", NbtType.COMPOUND));
+            this.blockDefinitions = new NbtBlockDefinitionRegistry(map.getList("blocks", NbtType.COMPOUND), false);
+            this.blockDefinitionsHashed = new NbtBlockDefinitionRegistry(map.getList("blocks", NbtType.COMPOUND), true);
         } else {
-            this.blockDefinitions = new UnknownBlockDefinitionRegistry();
+            this.blockDefinitions = this.blockDefinitionsHashed = new UnknownBlockDefinitionRegistry();
             log.warn("Failed to load block palette. Blocks will appear as runtime IDs in packet traces and creative_content.json!");
         }
 
