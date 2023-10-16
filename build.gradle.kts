@@ -19,7 +19,6 @@ repositories {
     mavenCentral()
     maven("https://repo.opencollab.dev/maven-snapshots")
     maven("https://repo.opencollab.dev/maven-releases")
-    maven("https://maven.lenni0451.net/snapshots")
 }
 
 dependencies {
