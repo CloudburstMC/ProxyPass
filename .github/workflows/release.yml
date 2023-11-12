@@ -1,12 +1,15 @@
 name: Build
 
 on:
-  workflow_dispatch:
   push:
+    branches:
+      - '**'
 
 jobs:
-  build:
+  release:
     runs-on: ubuntu-latest
+    outputs:
+      release_id: ${{ steps.release.outputs.releaseID }}
     steps:
       - name: Set up JDK 17
         # See https://github.com/actions/setup-java/commits
@@ -15,23 +18,19 @@ jobs:
           java-version: 17
           distribution: temurin
 
-
       - name: Checkout repository and submodules
         # See https://github.com/actions/checkout/commits
         uses: actions/checkout@72f2cec99f417b1a1c5e2e88945068983b7965f9
         with:
           submodules: recursive
-
       - name: Validate Gradle Wrapper
         # See https://github.com/gradle/wrapper-validation-action/commits
         uses: gradle/wrapper-validation-action@56b90f209b02bf6d1deae490e9ef18b21a389cd4
-
       - name: Build ProxyPass
         # See https://github.com/gradle/gradle-build-action/commits
         uses: gradle/gradle-build-action@3bfe3a46584a206fb8361cdedd0647b0c4204232
         with:
           arguments: build
-
       - name: Archive artifact
         # See https://github.com/actions/upload-artifact/commits
         uses: actions/upload-artifact@a8a3f3ad30e3422c9c7b888a15615d19a852ae32
@@ -40,3 +39,21 @@ jobs:
           name: ProxyPass
           path: build/libs/ProxyPass.jar
           if-no-files-found: error
+      - name: Make release
+        id: release
+        uses: Kas-tle/base-release-action@95bf169cd0975b3fba91535309d416801aa97a38
+        with:
+          files: |
+            build/libs/ProxyPass.jar
+          appID: ${{ secrets.RELEASE_APP_ID }}
+          appPrivateKey: ${{ secrets.RELEASE_APP_PK }}
+
+  upload-logs:
+    name: Upload Logs
+    runs-on: ubuntu-latest
+    needs: release
+    steps:
+    - uses: Kas-tle/release-build-log-action@46873b93db54b63e3d412ff7be96261c3593674c
+      with:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        releaseID: ${{ needs.release.outputs.release_id }}
