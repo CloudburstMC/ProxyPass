@@ -1,8 +1,10 @@
 import com.github.jengelman.gradle.plugins.shadow.transformers.Log4j2PluginsCacheFileTransformer
+import groovy.util.Node
 
 description = "Proxy pass allows developers to MITM a vanilla client and server without modifying them."
 
 plugins {
+    id("eclipse")
     id("java")
     id("application")
     alias(libs.plugins.shadow)
@@ -25,9 +27,9 @@ dependencies {
     compileOnly(libs.lombok)
     annotationProcessor(libs.lombok)
     compileOnly(libs.jsr305)
-    implementation(libs.bedrock.codec)
-    implementation(libs.bedrock.common)
-    implementation(libs.bedrock.connection)
+    implementation(libs.bedrock.codec) { version { branch = "3.0-proxypass" } }
+    implementation(libs.bedrock.common) { version { branch = "3.0-proxypass" } }
+    implementation(libs.bedrock.connection) { version { branch = "3.0-proxypass" } }
     implementation(libs.jackson.databind)
     implementation(libs.jackson.dataformat.yaml)
     implementation(libs.common)
@@ -59,4 +61,34 @@ listOf("distZip", "distTar", "startScripts").forEach { taskName ->
 
 tasks.named("startShadowScripts") {
     dependsOn("jar")
+}
+
+eclipse {
+    classpath {
+        file {
+            withXml {
+                val classpath = asNode()
+                val compositeBuildModuleNames = mutableSetOf<String>()
+                configurations["runtimeClasspath"].resolvedConfiguration.resolvedArtifacts.forEach { artifact ->
+                    val id = artifact.id.componentIdentifier
+                    if (id is ProjectComponentIdentifier && !id.build.isCurrentBuild) {
+                        val classpathEntry = classpath.appendNode("classpathentry")
+                        classpathEntry.attributes().put("kind", "lib")
+                        classpathEntry.attributes().put("path", artifact.file.absolutePath)
+                        compositeBuildModuleNames.add(artifact.moduleVersion.id.name)
+                    }
+                }
+                classpath.children().listIterator().apply {
+                    while (hasNext()) {
+                        val entry = next() as Node
+                        val kind = entry.attribute("kind") as? String
+                        val path = entry.attribute("path") as? String
+                        if (kind == "src" && path != null && compositeBuildModuleNames.any { path.endsWith(it) }) {
+                            remove()
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
