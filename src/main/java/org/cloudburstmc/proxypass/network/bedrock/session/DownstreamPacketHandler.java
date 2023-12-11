@@ -9,6 +9,7 @@ import org.cloudburstmc.nbt.NBTOutputStream;
 import org.cloudburstmc.nbt.NbtMap;
 import org.cloudburstmc.nbt.util.stream.LittleEndianDataOutputStream;
 import org.cloudburstmc.protocol.bedrock.BedrockSession;
+import org.cloudburstmc.protocol.bedrock.data.camera.CameraPreset;
 import org.cloudburstmc.protocol.bedrock.data.definitions.BlockDefinition;
 import org.cloudburstmc.protocol.bedrock.data.definitions.ItemDefinition;
 import org.cloudburstmc.protocol.bedrock.data.definitions.SimpleItemDefinition;
@@ -16,6 +17,7 @@ import org.cloudburstmc.protocol.bedrock.data.inventory.ContainerId;
 import org.cloudburstmc.protocol.bedrock.data.inventory.ItemData;
 import org.cloudburstmc.protocol.bedrock.packet.*;
 import org.cloudburstmc.protocol.common.DefinitionRegistry;
+import org.cloudburstmc.protocol.common.NamedDefinition;
 import org.cloudburstmc.protocol.common.PacketSignal;
 import org.cloudburstmc.protocol.common.SimpleDefinitionRegistry;
 import org.cloudburstmc.proxypass.ProxyPass;
@@ -26,6 +28,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 @Log4j2
 @RequiredArgsConstructor
@@ -120,6 +123,20 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
         return PacketSignal.UNHANDLED;
     }
 
+
+    @Override
+    public PacketSignal handle(CameraPresetsPacket packet) {
+        DefinitionRegistry<NamedDefinition> cameraDefinitions = SimpleDefinitionRegistry.<NamedDefinition>builder()
+                .addAll(IntStream.range(0, packet.getPresets().size())
+                .mapToObj(i -> CameraPresetDefinition.fromCameraPreset(packet.getPresets().get(i), i))
+                .collect(Collectors.toList()))
+        .build();
+
+        this.session.getPeer().getCodecHelper().setCameraPresetDefinitions(cameraDefinitions);
+        player.getUpstream().getPeer().getCodecHelper().setCameraPresetDefinitions(cameraDefinitions);
+        return PacketSignal.UNHANDLED;
+    }
+
     private void dumpCreativeItems(ItemData[] contents) {
         List<CreativeItemEntry> entries = new ArrayList<>();
         for (ItemData data : contents) {
@@ -190,18 +207,18 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
     @Value
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private static class CreativeItemEntry {
-        private final String id;
-        private final Integer damage;
-        private final Integer blockRuntimeId;
+        String id;
+        Integer damage;
+        Integer blockRuntimeId;
         @JsonProperty("block_state_b64")
-        private final String blockTag;
+        String blockTag;
         @JsonProperty("nbt_b64")
-        private final String nbt;
+        String nbt;
     }
 
     @Value
     private static class CreativeItems {
-        private final List<CreativeItemEntry> items;
+        List<CreativeItemEntry> items;
     }
 
     @Value
@@ -209,14 +226,24 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
         private static final Comparator<RuntimeEntry> COMPARATOR = Comparator.comparingInt(RuntimeEntry::getId)
                 .thenComparingInt(RuntimeEntry::getData);
 
-        private final String name;
-        private final int id;
-        private final int data;
+        String name;
+        int id;
+        int data;
     }
 
     @Value
     private static class DataEntry {
-        private final String name;
-        private final int id;
+        String name;
+        int id;
+    }
+
+    @Value
+    private static class CameraPresetDefinition implements NamedDefinition {
+        String identifier;
+        int runtimeId;
+
+        public static CameraPresetDefinition fromCameraPreset(CameraPreset preset, int index) {
+            return new CameraPresetDefinition(preset.getIdentifier(), index);
+        }
     }
 }
