@@ -7,6 +7,7 @@ import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
+import com.google.common.collect.Sets;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
@@ -25,17 +26,21 @@ import org.cloudburstmc.protocol.bedrock.codec.BedrockCodec;
 import org.cloudburstmc.protocol.bedrock.codec.v630.Bedrock_v630;
 import org.cloudburstmc.protocol.bedrock.data.definitions.BlockDefinition;
 import org.cloudburstmc.protocol.bedrock.netty.initializer.BedrockChannelInitializer;
+import org.cloudburstmc.protocol.bedrock.packet.BedrockPacket;
 import org.cloudburstmc.protocol.common.DefinitionRegistry;
 import org.cloudburstmc.proxypass.network.bedrock.session.ProxyClientSession;
 import org.cloudburstmc.proxypass.network.bedrock.session.ProxyServerSession;
 import org.cloudburstmc.proxypass.network.bedrock.session.UpstreamPacketHandler;
 import org.cloudburstmc.proxypass.network.bedrock.util.NbtBlockDefinitionRegistry;
 import org.cloudburstmc.proxypass.network.bedrock.util.UnknownBlockDefinitionRegistry;
+import org.reflections.Reflections;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.util.*;
@@ -125,14 +130,33 @@ public class ProxyPass {
         proxyAddress = configuration.getProxy().getAddress();
         targetAddress = configuration.getDestination().getAddress();
         maxClients = configuration.getMaxClients();
-
-        configuration.getIgnoredPackets().forEach(s -> {
+        if (!configuration.getAllowedPackets().isEmpty()) {
+            Set<Class<? extends BedrockPacket>> classes = null;
             try {
-                ignoredPackets.add(Class.forName("org.cloudburstmc.protocol.bedrock.packet." + s));
+                classes = getClasses("org.cloudburstmc.protocol.bedrock.packet");
             } catch (ClassNotFoundException e) {
-                log.warn("No packet with name {}", s);
+                throw new RuntimeException(e);
             }
-        });
+            HashSet<Class<?>> sets2 = new HashSet<>();
+            configuration.getAllowedPackets().forEach(s -> {
+                try {
+                    sets2.add(Class.forName("org.cloudburstmc.protocol.bedrock.packet." + s));
+                } catch (ClassNotFoundException e) {
+                    log.warn("No packet with name {}", s);
+                }
+            });
+            Sets.SetView<Class<? extends BedrockPacket>> difference = Sets.difference(classes, sets2);
+            ignoredPackets.addAll(difference);
+        } else {
+            configuration.getIgnoredPackets().forEach(s -> {
+                try {
+                    ignoredPackets.add(Class.forName("org.cloudburstmc.protocol.bedrock.packet." + s));
+                } catch (ClassNotFoundException e) {
+                    log.warn("No packet with name {}", s);
+                }
+            });
+        }
+
 
         baseDir = Paths.get(".").toAbsolutePath();
         sessionsDir = baseDir.resolve("sessions");
@@ -176,6 +200,11 @@ public class ProxyPass {
         log.info("Bedrock server started on {}", proxyAddress);
 
         loop();
+    }
+
+    public static Set<Class<? extends BedrockPacket>> getClasses(String packageName) throws ClassNotFoundException, IOException {
+        Reflections reflections = new Reflections(packageName);
+        return reflections.getSubTypesOf(BedrockPacket.class);
     }
 
     public void newClient(InetSocketAddress socketAddress, Consumer<ProxyClientSession> sessionConsumer) {

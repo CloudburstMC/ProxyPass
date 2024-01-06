@@ -32,6 +32,7 @@ dependencies {
     implementation(libs.jackson.dataformat.yaml)
     implementation(libs.common)
     implementation(libs.jansi)
+    implementation(libs.reflections)
     implementation(libs.jline.reader)
 }
 

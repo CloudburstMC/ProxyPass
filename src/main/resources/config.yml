@@ -26,3 +26,7 @@ ignored-packets:
   - "NetworkChunkPublisherUpdatePacket"
   - "ClientCacheBlobStatusPacket"
   - "ClientCacheMissResponsePacket"
+
+allowed-packets:
+  - "ItemStackRequestPacket"
+  - "ItemStackResponsePacket"

@@ -9,6 +9,7 @@ jansi = { group = "org.fusesource.jansi", name = "jansi", version = "2.4.1" }
 jline-reader = { group = "org.jline", name = "jline-reader", version = "3.24.1" }
 jsr305 = { group = "com.google.code.findbugs", name = "jsr305", version = "3.0.2" }
 lombok = { group = "org.projectlombok", name = "lombok", version = "1.18.30" }
+reflections = { group = "org.reflections", name = "reflections", version = "0.10.2" }
 
 [plugins]
 shadow = { id = "com.github.johnrengelman.shadow", version = "8.1.1" }

@@ -31,9 +31,10 @@ public class Configuration {
     private int maxClients = 0;
     @JsonProperty("log-to")
     private LogTo logTo = LogTo.FILE;
-
     @JsonProperty("ignored-packets")
     private Set<String> ignoredPackets = Collections.emptySet();
+    @JsonProperty("allowed-packets")
+    private Set<String> allowedPackets = Collections.emptySet();
 
     public static Configuration load(Path path) throws IOException {
         try (BufferedReader reader = Files.newBufferedReader(path)) {
