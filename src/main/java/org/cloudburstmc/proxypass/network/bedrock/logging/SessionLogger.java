@@ -1,7 +1,9 @@
 package org.cloudburstmc.proxypass.network.bedrock.logging;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import lombok.extern.log4j.Log4j2;
 import org.cloudburstmc.protocol.bedrock.BedrockSession;
@@ -53,7 +55,7 @@ public class SessionLogger {
     }
 
     public void start() {
-        if (proxy.getConfiguration().isLoggingPackets()){
+        if (proxy.getConfiguration().isLoggingPackets()) {
             if (proxy.getConfiguration().getLogTo().logToFile) {
                 log.debug("Packets will be logged under " + logPath.toString());
                 try {
@@ -86,7 +88,7 @@ public class SessionLogger {
     }
 
     public void saveJson(String name, byte[] encodedJsonString) {
-        Path geometryPath = dataPath.resolve(name +".json");
+        Path geometryPath = dataPath.resolve(name + ".json");
         try {
             Files.write(geometryPath, encodedJsonString, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
         } catch (IOException e) {
@@ -94,14 +96,26 @@ public class SessionLogger {
         }
     }
 
+    private static final ObjectMapper MAPPER = new ObjectMapper();
+
     public void logPacket(BedrockSession session, BedrockPacket packet, boolean upstream) {
         String logPrefix = getLogPrefix(upstream);
         if (!proxy.isIgnoredPacket(packet.getClass())) {
             if (session.isLogging() && log.isTraceEnabled()) {
                 log.trace("{} {}: {}", logPrefix, session.getSocketAddress(), packet);
             }
-
-            String logMessage = String.format(LOG_FORMAT, FORMATTER.format(Instant.now()), logPrefix, packet);
+            String logMessage;
+            if (proxy.getConfiguration().isLogToJson()) {
+                ObjectWriter writer = MAPPER.writer(new DefaultPrettyPrinter());
+                try {
+                    String s = writer.writeValueAsString(packet);
+                    logMessage = String.format(LOG_FORMAT, FORMATTER.format(Instant.now()), logPrefix, s);
+                } catch (JsonProcessingException e) {
+                    throw new RuntimeException(e);
+                }
+            } else {
+                logMessage = String.format(LOG_FORMAT, FORMATTER.format(Instant.now()), logPrefix, packet);
+            }
             if (proxy.getConfiguration().isLoggingPackets()) {
                 logToBuffer(() -> logMessage);
             }

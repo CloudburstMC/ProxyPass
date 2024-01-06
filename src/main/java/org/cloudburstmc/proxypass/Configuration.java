@@ -31,6 +31,8 @@ public class Configuration {
     private int maxClients = 0;
     @JsonProperty("log-to")
     private LogTo logTo = LogTo.FILE;
+    @JsonProperty("log-to-json")
+    private boolean logToJson = true;
     @JsonProperty("ignored-packets")
     private Set<String> ignoredPackets = Collections.emptySet();
     @JsonProperty("allowed-packets")
