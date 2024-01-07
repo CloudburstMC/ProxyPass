@@ -1,11 +1,12 @@
 package org.cloudburstmc.proxypass.network.bedrock.logging;
 
+import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.ObjectWriter;
+import com.fasterxml.jackson.databind.*;
+import com.fasterxml.jackson.databind.module.SimpleModule;
 import lombok.extern.log4j.Log4j2;
+import org.cloudburstmc.math.vector.Vector3i;
 import org.cloudburstmc.protocol.bedrock.BedrockSession;
 import org.cloudburstmc.protocol.bedrock.packet.BedrockPacket;
 import org.cloudburstmc.proxypass.ProxyPass;
@@ -98,6 +99,23 @@ public class SessionLogger {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
+    static {
+        SimpleModule simpleModule = new SimpleModule();
+        simpleModule.addSerializer(Vector3i.class, new JsonSerializer<Vector3i>() {
+            @Override
+            public void serialize(Vector3i vector3i, JsonGenerator gen, SerializerProvider serializerProvider) throws IOException {
+                gen.writeStartObject();
+                gen.writeNumberField("x", vector3i.getX());
+                gen.writeNumberField("y", vector3i.getY());
+                gen.writeNumberField("z", vector3i.getZ());
+                gen.writeEndObject();
+            }
+        });
+        MAPPER.registerModule(simpleModule);
+    }
+
+    private static final ObjectWriter WRITER = MAPPER.writer(new DefaultPrettyPrinter());
+
     public void logPacket(BedrockSession session, BedrockPacket packet, boolean upstream) {
         String logPrefix = getLogPrefix(upstream);
         if (!proxy.isIgnoredPacket(packet.getClass())) {
@@ -106,9 +124,8 @@ public class SessionLogger {
             }
             String logMessage;
             if (proxy.getConfiguration().isLogToJson()) {
-                ObjectWriter writer = MAPPER.writer(new DefaultPrettyPrinter());
                 try {
-                    String s = writer.writeValueAsString(packet);
+                    String s = WRITER.writeValueAsString(packet);
                     logMessage = String.format(LOG_FORMAT, FORMATTER.format(Instant.now()), logPrefix, s);
                 } catch (JsonProcessingException e) {
                     throw new RuntimeException(e);
