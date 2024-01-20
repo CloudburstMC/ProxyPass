@@ -43,7 +43,7 @@ dependencies {
     compileOnly(libs.lombok)
     annotationProcessor(libs.lombok)
     compileOnly(libs.jsr305)
-    implementation(files("C:\\Users\\15425\\IdeaProjects\\Protocol\\bedrock-codec\\build\\libs\\bedrock-codec-3.0.0.Beta1-SNAPSHOT.jar"))
+    implementation(libs.bedrock.codec)
     implementation(libs.bedrock.common)
     implementation(libs.bedrock.connection)
     implementation(libs.jackson.databind)
