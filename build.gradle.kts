@@ -14,6 +14,18 @@ java {
     }
 }
 
+tasks.distTar {
+    dependsOn("shadowJar");
+}
+
+tasks.startScripts {
+    dependsOn("shadowJar");
+}
+
+tasks.startShadowScripts {
+    dependsOn("jar");
+}
+
 repositories {
     mavenLocal()
     mavenCentral()
