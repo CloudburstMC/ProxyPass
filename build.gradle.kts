@@ -16,6 +16,12 @@ java {
 
 tasks.distTar {
     dependsOn("shadowJar");
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
+}
+
+tasks.distZip {
+    dependsOn("shadowJar");
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
 }
 
 tasks.startScripts {
@@ -37,7 +43,7 @@ dependencies {
     compileOnly(libs.lombok)
     annotationProcessor(libs.lombok)
     compileOnly(libs.jsr305)
-    implementation(libs.bedrock.codec)
+    implementation(files("C:\\Users\\15425\\IdeaProjects\\Protocol\\bedrock-codec\\build\\libs\\bedrock-codec-3.0.0.Beta1-SNAPSHOT.jar"))
     implementation(libs.bedrock.common)
     implementation(libs.bedrock.connection)
     implementation(libs.jackson.databind)
