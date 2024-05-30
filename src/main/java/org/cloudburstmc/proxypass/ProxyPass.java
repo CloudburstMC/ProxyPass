@@ -226,6 +226,16 @@ public class ProxyPass {
             }
         }
     }
+    
+    public void saveCompressedNBT(String dataName, Object dataTag) {
+        Path path = dataDir.resolve(dataName + ".nbt");
+        try (OutputStream outputStream = Files.newOutputStream(path, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+             NBTOutputStream nbtOutputStream = NbtUtils.createGZIPWriter(outputStream)) {
+            nbtOutputStream.writeTag(dataTag);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
 
     public void saveNBT(String dataName, Object dataTag) {
         Path path = dataDir.resolve(dataName + ".dat");
