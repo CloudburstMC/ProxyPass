@@ -22,7 +22,7 @@ import org.cloudburstmc.netty.channel.raknet.config.RakChannelOption;
 import org.cloudburstmc.protocol.bedrock.BedrockPeer;
 import org.cloudburstmc.protocol.bedrock.BedrockPong;
 import org.cloudburstmc.protocol.bedrock.codec.BedrockCodec;
-import org.cloudburstmc.protocol.bedrock.codec.v671.Bedrock_v671;
+import org.cloudburstmc.protocol.bedrock.codec.v685.Bedrock_v685;
 import org.cloudburstmc.protocol.bedrock.data.definitions.BlockDefinition;
 import org.cloudburstmc.protocol.bedrock.netty.initializer.BedrockChannelInitializer;
 import org.cloudburstmc.protocol.common.DefinitionRegistry;
@@ -49,7 +49,7 @@ public class ProxyPass {
     public static final ObjectMapper JSON_MAPPER;
     public static final YAMLMapper YAML_MAPPER = (YAMLMapper) new YAMLMapper().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
     public static final String MINECRAFT_VERSION;
-    public static final BedrockCodec CODEC = Bedrock_v671.CODEC;
+    public static final BedrockCodec CODEC = Bedrock_v685.CODEC;
     public static final int PROTOCOL_VERSION = CODEC.getProtocolVersion();
     private static final BedrockPong ADVERTISEMENT = new BedrockPong()
             .edition("MCPE")
