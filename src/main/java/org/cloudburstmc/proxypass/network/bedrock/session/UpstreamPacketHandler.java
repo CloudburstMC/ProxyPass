@@ -13,6 +13,7 @@ import org.cloudburstmc.protocol.bedrock.util.JsonUtils;
 import org.cloudburstmc.protocol.common.PacketSignal;
 import org.cloudburstmc.proxypass.ProxyPass;
 import org.cloudburstmc.proxypass.network.bedrock.util.ForgeryUtils;
+import org.cloudburstmc.proxypass.network.bedrock.util.SkinUtils;
 import org.jose4j.json.JsonUtil;
 import org.jose4j.json.internal.json_simple.JSONObject;
 import org.jose4j.jws.JsonWebSignature;
@@ -125,6 +126,7 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
                 jws.setCompactSerialization(jwt);
                 player.getLogger().saveJson("chainData", new JSONObject(JsonUtil.parseJson(jws.getUnverifiedPayload())));
                 player.getLogger().saveJson("skinData", this.skinData);
+                SkinUtils.saveSkin(proxySession, this.skinData);
             } catch (Exception e) {
                 log.error("JSON output error: " + e.getMessage(), e);
             }
