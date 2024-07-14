@@ -47,8 +47,8 @@ public class SkinUtils {
             saveImage(session, 64, 32, cape, "cape");
         }
 
-        byte[] geometry = Base64.getDecoder().decode(JsonUtils.childAsType(skinData, "SkinGeometry", String.class));
-        session.getLogger().saveJson("geometry", geometry);
+        byte[] geometry = Base64.getDecoder().decode(JsonUtils.childAsType(skinData, "SkinGeometryData", String.class));
+        session.getLogger().saveJson("geometryData", geometry);
     }
 
     private static void saveImage(ProxyPlayerSession session, int width, int height, byte[] bytes, String name) {
