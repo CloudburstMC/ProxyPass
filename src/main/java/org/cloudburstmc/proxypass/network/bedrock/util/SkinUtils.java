@@ -17,6 +17,7 @@ public class SkinUtils {
     public static final int DOUBLE_SKIN_SIZE = 64 * 64 * PIXEL_SIZE;
     public static final int SKIN_128_64_SIZE = 128 * 64 * PIXEL_SIZE;
     public static final int SKIN_128_128_SIZE = 128 * 128 * PIXEL_SIZE;
+    public static final int SKIN_256_256_SIZE = 256 * 256 * PIXEL_SIZE;
 
     public static void saveSkin(ProxyPlayerSession session, JSONObject skinData) {
         byte[] skin = Base64.getDecoder().decode(JsonUtils.childAsType(skinData, "SkinData", String.class));
@@ -33,13 +34,18 @@ public class SkinUtils {
         } else if (skin.length == SKIN_128_128_SIZE) {
             width = 128;
             height = 128;
+        } else if (skin.length == SKIN_256_256_SIZE) {
+            width = 256;
+            height = 256;
         } else {
             throw new IllegalStateException("Invalid skin");
         }
         saveImage(session, width, height, skin, "skin");
 
         byte[] cape = Base64.getDecoder().decode(JsonUtils.childAsType(skinData, "CapeData", String.class));
-        saveImage(session, 64, 32, cape, "cape");
+        if (cape.length != 0) {
+            saveImage(session, 64, 32, cape, "cape");
+        }
 
         byte[] geometry = Base64.getDecoder().decode(JsonUtils.childAsType(skinData, "SkinGeometry", String.class));
         session.getLogger().saveJson("geometry", geometry);
