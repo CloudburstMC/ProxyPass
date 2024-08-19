@@ -170,6 +170,7 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
     }
 
     // Handles creative items for versions prior to 1.16
+    @SuppressWarnings("deprecation")
     @Override
     public PacketSignal handle(InventoryContentPacket packet) {
         if (packet.getContainerId() == ContainerId.CREATIVE) {

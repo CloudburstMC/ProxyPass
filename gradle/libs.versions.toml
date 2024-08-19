@@ -1,14 +1,14 @@
 [libraries]
-bedrock-codec = { group = "org.cloudburstmc.protocol", name = "bedrock-codec", version = "3.0.0.Beta2-20240712.120855-17" }
-bedrock-common = { group = "org.cloudburstmc.protocol", name = "common", version = "3.0.0.Beta2-20240712.120855-17" }
-bedrock-connection = { group = "org.cloudburstmc.protocol", name = "bedrock-connection", version = "3.0.0.Beta2-20240712.120855-17" }
+bedrock-codec = { group = "org.cloudburstmc.protocol", name = "bedrock-codec", version = "3.0.0.Beta3-20240819.124045-13" }
+bedrock-common = { group = "org.cloudburstmc.protocol", name = "common", version = "3.0.0.Beta3-20240819.124045-10" }
+bedrock-connection = { group = "org.cloudburstmc.protocol", name = "bedrock-connection", version = "3.0.0.Beta3-20240819.124045-12" }
 common = { group = "com.nukkitx", name = "common", version = "1.0.1-SNAPSHOT" }
-jackson-databind = { group = "com.fasterxml.jackson.core", name = "jackson-databind", version = "2.15.3" }
-jackson-dataformat-yaml = { group = "com.fasterxml.jackson.dataformat", name = "jackson-dataformat-yaml", version = "2.15.3" }
+jackson-databind = { group = "com.fasterxml.jackson.core", name = "jackson-databind", version = "2.17.2" }
+jackson-dataformat-yaml = { group = "com.fasterxml.jackson.dataformat", name = "jackson-dataformat-yaml", version = "2.17.2" }
 jansi = { group = "org.fusesource.jansi", name = "jansi", version = "2.4.1" }
-jline-reader = { group = "org.jline", name = "jline-reader", version = "3.24.1" }
-jsr305 = { group = "com.google.code.findbugs", name = "jsr305", version = "3.0.2" }
-lombok = { group = "org.projectlombok", name = "lombok", version = "1.18.30" }
+jline-reader = { group = "org.jline", name = "jline-reader", version = "3.26.3" }
+lombok = { group = "org.projectlombok", name = "lombok", version = "1.18.34" }
+spotbugs-annotations = { group = "com.github.spotbugs", name = "spotbugs-annotations", version = "4.8.6" }
 
 [plugins]
-shadow = { id = "com.github.johnrengelman.shadow", version = "8.1.1" }
+shadow = { id = "com.gradleup.shadow", version = "8.3.0" }

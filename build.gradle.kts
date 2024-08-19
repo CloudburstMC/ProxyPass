@@ -24,7 +24,7 @@ repositories {
 dependencies {
     compileOnly(libs.lombok)
     annotationProcessor(libs.lombok)
-    compileOnly(libs.jsr305)
+    compileOnly(libs.spotbugs.annotations)
     implementation(libs.bedrock.codec)
     implementation(libs.bedrock.common)
     implementation(libs.bedrock.connection)
