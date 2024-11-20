@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
+import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioDatagramChannel;
@@ -24,6 +25,7 @@ import org.cloudburstmc.protocol.bedrock.BedrockPong;
 import org.cloudburstmc.protocol.bedrock.codec.BedrockCodec;
 import org.cloudburstmc.protocol.bedrock.codec.v748.Bedrock_v748;
 import org.cloudburstmc.protocol.bedrock.data.definitions.BlockDefinition;
+import org.cloudburstmc.protocol.bedrock.netty.BedrockPacketWrapper;
 import org.cloudburstmc.protocol.bedrock.netty.initializer.BedrockChannelInitializer;
 import org.cloudburstmc.protocol.common.DefinitionRegistry;
 import org.cloudburstmc.proxypass.network.bedrock.session.ProxyClientSession;
@@ -292,6 +294,33 @@ public class ProxyPass {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    public void savePacket(BedrockPacketWrapper wrapper) {
+        String name = wrapper.getPacket().getPacketType().name().toLowerCase() + "_" + System.currentTimeMillis() + ".dat";
+
+        ByteBuf packetBuf = wrapper.getPacketBuffer().slice();
+        packetBuf.skipBytes(wrapper.getHeaderLength()); // skip header
+
+        ByteBuf buffer = packetBuf.alloc().ioBuffer();
+        buffer.writeInt(wrapper.getPacketId()); // packet ID
+        buffer.writeBytes(packetBuf); // packet data
+
+        Path outPath = dataDir.resolve(name);
+        try (OutputStream outputStream = Files.newOutputStream(outPath, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE)) {
+
+            byte[] bytes = new byte[1024 * 8];
+            while (buffer.isReadable()) {
+                int read = Math.min(buffer.readableBytes(), bytes.length);
+                buffer.readBytes(bytes, 0, read);
+                outputStream.write(bytes, 0, read);
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        } finally {
+            buffer.release();
+        }
+
     }
 
     public boolean isIgnoredPacket(Class<?> clazz) {
