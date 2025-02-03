@@ -82,7 +82,7 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
                     }
                 }
 
-                itemData.add(new DataEntry(entry.getIdentifier(), entry.getRuntimeId()));
+                itemData.add(new DataEntry(entry.getIdentifier(), entry.getRuntimeId(), -1, false));
                 ProxyPass.legacyIdMap.put(entry.getRuntimeId(), entry.getIdentifier());
             }
 
@@ -122,7 +122,7 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
         NbtMapBuilder root = NbtMap.builder();
         for (var item : packet.getItems()) {
             root.putCompound(item.getName(), item.getData().getCompound("components"));
-            itemData.add(new DataEntry(item.getName(), item.getItemId()));
+            itemData.add(new DataEntry(item.getName(), item.getItemId(), item.getVersion(), item.isComponentBased()));
         }
 
         if (ProxyPass.CODEC.getProtocolVersion() >= 776) {
@@ -295,5 +295,7 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
     private static class DataEntry {
         private final String name;
         private final int id;
+        private final int version;
+        private final boolean componentBased;
     }
 }
