@@ -121,8 +121,8 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
 
         NbtMapBuilder root = NbtMap.builder();
         for (var item : packet.getItems()) {
-            root.putCompound(item.getName(), item.getData().getCompound("components"));
-            itemData.add(new DataEntry(item.getName(), item.getItemId(), item.getVersion(), item.isComponentBased()));
+            root.putCompound(item.getIdentifier(), item.isComponentBased() ? item.getComponentData() : NbtMap.EMPTY);
+            itemData.add(new DataEntry(item.getIdentifier(), item.getRuntimeId(), item.getVersion(), item.isComponentBased()));
         }
 
         if (ProxyPass.CODEC.getProtocolVersion() >= 776) {
