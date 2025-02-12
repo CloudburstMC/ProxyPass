@@ -121,7 +121,7 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
 
         NbtMapBuilder root = NbtMap.builder();
         for (var item : packet.getItems()) {
-            root.putCompound(item.getIdentifier(), item.isComponentBased() ? item.getComponentData() : NbtMap.EMPTY);
+            root.putCompound(item.getIdentifier(), item.getComponentData());
             itemData.add(new DataEntry(item.getIdentifier(), item.getRuntimeId(), item.getVersion(), item.isComponentBased()));
         }
 
