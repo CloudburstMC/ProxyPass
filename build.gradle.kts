@@ -6,6 +6,7 @@ plugins {
     id("java")
     id("application")
     alias(libs.plugins.shadow)
+    id("org.openjfx.javafxplugin") version "0.0.14"
 }
 
 java {
@@ -35,14 +36,46 @@ dependencies {
     implementation(libs.jline.reader)
 }
 
+// 配置 JavaFX 插件
+javafx {
+    version = "17.0.14"
+    modules = listOf("javafx.controls", "javafx.fxml", "javafx.graphics")
+}
+
 application {
     mainClass.set("org.cloudburstmc.proxypass.ProxyPass")
 }
 
 tasks.shadowJar {
+    archiveBaseName.set("ProxyPass")
     archiveClassifier.set("")
     archiveVersion.set("")
     transform(Log4j2PluginsCacheFileTransformer())
+    manifest {
+        attributes["Main-Class"] = "org.cloudburstmc.proxypass.ProxyPass"
+    }
+}
+
+
+tasks.jar {
+    enabled = false
+}
+
+tasks.named("distZip") {
+    dependsOn(tasks.shadowJar)
+}
+
+tasks.named("distTar") {
+    dependsOn(tasks.shadowJar)
+}
+
+tasks.named("startScripts") {
+    dependsOn(tasks.shadowJar)
+}
+
+tasks.named("startShadowScripts", CreateStartScripts::class) {
+    dependsOn(tasks.shadowJar)
+    classpath = files(tasks.shadowJar.flatMap { it.archiveFile })
 }
 
 tasks.named<JavaExec>("run") {

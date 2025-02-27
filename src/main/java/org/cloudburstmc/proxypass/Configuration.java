@@ -35,6 +35,8 @@ public class Configuration {
     @JsonProperty("ignored-packets")
     private Set<String> ignoredPackets = Collections.emptySet();
 
+    private GuiSection gui;
+
     public static Configuration load(Path path) throws IOException {
         try (BufferedReader reader = Files.newBufferedReader(path)) {
             return ProxyPass.YAML_MAPPER.readValue(reader, Configuration.class);
@@ -60,5 +62,11 @@ public class Configuration {
         InetSocketAddress getAddress() {
             return new InetSocketAddress(host, port);
         }
+    }
+
+    @Getter
+    @ToString
+    public static class GuiSection {
+        private boolean enable;
     }
 }

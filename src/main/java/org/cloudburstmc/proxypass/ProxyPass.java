@@ -29,6 +29,7 @@ import org.cloudburstmc.protocol.bedrock.netty.BedrockPacketWrapper;
 import org.cloudburstmc.protocol.bedrock.netty.initializer.BedrockChannelInitializer;
 import org.cloudburstmc.protocol.bedrock.packet.AvailableCommandsPacket;
 import org.cloudburstmc.protocol.common.DefinitionRegistry;
+import org.cloudburstmc.proxypass.gui.ProxyPassGUI;
 import org.cloudburstmc.proxypass.network.bedrock.session.ProxyClientSession;
 import org.cloudburstmc.proxypass.network.bedrock.session.ProxyServerSession;
 import org.cloudburstmc.proxypass.network.bedrock.session.UpstreamPacketHandler;
@@ -111,6 +112,14 @@ public class ProxyPass {
     private DefinitionRegistry<BlockDefinition> blockDefinitions;
     private DefinitionRegistry<BlockDefinition> blockDefinitionsHashed;
 
+    public static void capturePacket(BedrockPacketWrapper wrapper, boolean upstream) {
+        if (ProxyPassGUI.isEnable()) {
+            ByteBuf buffer = wrapper.getPacketBuffer().slice();
+            // Add to GUI
+            ProxyPassGUI.addPacket(upstream ? "Server" : "Client", wrapper.getPacket(), buffer.readableBytes());
+        }
+    }
+
     public static void main(String[] args) {
         ResourceLeakDetector.setLevel(ResourceLeakDetector.Level.DISABLED);
         ProxyPass proxy = new ProxyPass();
@@ -157,6 +166,14 @@ public class ProxyPass {
         } else {
             this.blockDefinitions = this.blockDefinitionsHashed = new UnknownBlockDefinitionRegistry();
             log.warn("Failed to load block palette. Blocks will appear as runtime IDs in packet traces and creative_content.json!");
+        }
+
+        log.info("Loading gui... status: "+getConfiguration().getGui().isEnable());
+        if (getConfiguration().getGui().isEnable()) {
+            new Thread(() -> ProxyPassGUI.main(new String[]{})).start();
+            if (!getConfiguration().getIgnoredPackets().isEmpty()) {
+                ProxyPassGUI.ignoredPacketTypes = getConfiguration().getIgnoredPackets();
+            }
         }
 
         log.info("Loading server...");
