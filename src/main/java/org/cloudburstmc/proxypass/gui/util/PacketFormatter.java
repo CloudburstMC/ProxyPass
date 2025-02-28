@@ -1,7 +1,8 @@
-package org.cloudburstmc.proxypass.gui;
+package org.cloudburstmc.proxypass.gui.util;
 
 import io.netty.buffer.ByteBuf;
 import javafx.collections.transformation.FilteredList;
+import org.cloudburstmc.proxypass.gui.model.PacketInfo;
 
 import java.io.File;
 import java.io.PrintWriter;
@@ -10,7 +11,7 @@ import java.time.format.DateTimeFormatter;
 
 public class PacketFormatter {
 
-    protected static void exportAsText(File file, FilteredList<PacketInfo> filteredPackets) throws Exception {
+    public static void exportAsText(File file, FilteredList<PacketInfo> filteredPackets) throws Exception {
         try (PrintWriter writer = new PrintWriter(file)) {
             writer.println("ProxyPass Packet Export");
             writer.println("Generated: " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
@@ -31,7 +32,7 @@ public class PacketFormatter {
         }
     }
 
-    protected static void exportAsJson(File file, FilteredList<PacketInfo> filteredPackets) throws Exception {
+    public static void exportAsJson(File file, FilteredList<PacketInfo> filteredPackets) throws Exception {
         try (PrintWriter writer = new PrintWriter(file)) {
             writer.println("{");
             writer.println("  \"meta\": {");

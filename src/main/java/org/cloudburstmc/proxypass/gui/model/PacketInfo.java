@@ -1,4 +1,4 @@
-package org.cloudburstmc.proxypass.gui;
+package org.cloudburstmc.proxypass.gui.model;
 
 import org.cloudburstmc.protocol.bedrock.packet.BedrockPacket;
 
