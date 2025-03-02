@@ -47,7 +47,7 @@ application {
 }
 
 tasks.shadowJar {
-    archiveBaseName.set("ProxyPass")
+    archiveBaseName.set("ProxyPassGUI")
     archiveClassifier.set("")
     archiveVersion.set("")
     transform(Log4j2PluginsCacheFileTransformer())
