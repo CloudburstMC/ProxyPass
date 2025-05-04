@@ -55,7 +55,12 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
     // Handles biome definitions when client-side chunk generation is disabled
     @Override
     public PacketSignal handle(BiomeDefinitionListPacket packet) {
-        proxy.saveNBT("biome_definitions", packet.getDefinitions());
+        if (packet.getDefinitions() != null) {
+            proxy.saveNBT("biome_definitions", packet.getDefinitions());
+        }
+        if (packet.getBiomes() != null) {
+            proxy.saveJson("biome_definitions.json", packet.getBiomes());
+        }
         return PacketSignal.UNHANDLED;
     }
 
