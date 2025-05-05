@@ -1,5 +1,7 @@
 package org.cloudburstmc.proxypass.network.bedrock.util;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import org.cloudburstmc.nbt.NbtMap;
@@ -30,8 +32,9 @@ public class NbtBlockDefinitionRegistry implements DefinitionRegistry<BlockDefin
         return definitions.get(definition.getRuntimeId()) == definition;
     }
 
-    public record NbtBlockDefinition(int runtimeId, NbtMap tag) implements BlockDefinition {
+    public record NbtBlockDefinition(@JsonIgnoreProperties int runtimeId, NbtMap tag) implements BlockDefinition {
         @Override
+        @JsonIgnore
         public int getRuntimeId() {
             return runtimeId;
         }

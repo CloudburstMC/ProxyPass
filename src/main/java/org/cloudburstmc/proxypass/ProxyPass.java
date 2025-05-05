@@ -33,6 +33,7 @@ import org.cloudburstmc.protocol.bedrock.packet.AvailableCommandsPacket;
 import org.cloudburstmc.protocol.common.DefinitionRegistry;
 import org.cloudburstmc.proxypass.network.bedrock.jackson.ColorDeserializer;
 import org.cloudburstmc.proxypass.network.bedrock.jackson.ColorSerializer;
+import org.cloudburstmc.proxypass.network.bedrock.jackson.NbtDefinitionSerializer;
 import org.cloudburstmc.proxypass.network.bedrock.session.ProxyClientSession;
 import org.cloudburstmc.proxypass.network.bedrock.session.ProxyServerSession;
 import org.cloudburstmc.proxypass.network.bedrock.session.UpstreamPacketHandler;
@@ -57,10 +58,10 @@ public class ProxyPass {
     public static final ObjectMapper JSON_MAPPER;
     private static final SimpleModule MODULE = new SimpleModule("ProxyPass", Version.unknownVersion())
             .addSerializer(Color.class, new ColorSerializer())
-            .addDeserializer(Color.class, new ColorDeserializer());
+            .addDeserializer(Color.class, new ColorDeserializer())
+            .addSerializer(NbtBlockDefinitionRegistry.NbtBlockDefinition.class, new NbtDefinitionSerializer());
 
     public static final YAMLMapper YAML_MAPPER = (YAMLMapper) new YAMLMapper()
-            .registerModule(MODULE)
             .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
     public static final String MINECRAFT_VERSION;
 
@@ -90,7 +91,6 @@ public class ProxyPass {
                 return this;
             }
 
-            @SuppressWarnings("NullableProblems")
             @Override
             public void writeObjectFieldValueSeparator(JsonGenerator generator) throws IOException {
                 generator.writeRaw(": ");
@@ -309,7 +309,7 @@ public class ProxyPass {
     public void saveMojangson(String name, NbtMap nbt) {
         Path outPath = dataDir.resolve(name);
         try {
-            Files.write(outPath, nbt.toString().getBytes(StandardCharsets.UTF_8), StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE);
+            Files.writeString(outPath, nbt.toString(), StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
