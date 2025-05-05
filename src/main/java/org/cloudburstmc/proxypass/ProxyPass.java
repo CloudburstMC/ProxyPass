@@ -1,11 +1,13 @@
 package org.cloudburstmc.proxypass;
 
 import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.Version;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.core.util.DefaultIndenter;
 import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
@@ -29,12 +31,15 @@ import org.cloudburstmc.protocol.bedrock.netty.BedrockPacketWrapper;
 import org.cloudburstmc.protocol.bedrock.netty.initializer.BedrockChannelInitializer;
 import org.cloudburstmc.protocol.bedrock.packet.AvailableCommandsPacket;
 import org.cloudburstmc.protocol.common.DefinitionRegistry;
+import org.cloudburstmc.proxypass.network.bedrock.jackson.ColorDeserializer;
+import org.cloudburstmc.proxypass.network.bedrock.jackson.ColorSerializer;
 import org.cloudburstmc.proxypass.network.bedrock.session.ProxyClientSession;
 import org.cloudburstmc.proxypass.network.bedrock.session.ProxyServerSession;
 import org.cloudburstmc.proxypass.network.bedrock.session.UpstreamPacketHandler;
 import org.cloudburstmc.proxypass.network.bedrock.util.NbtBlockDefinitionRegistry;
 import org.cloudburstmc.proxypass.network.bedrock.util.UnknownBlockDefinitionRegistry;
 
+import java.awt.*;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -50,7 +55,13 @@ import java.util.function.Consumer;
 @Getter
 public class ProxyPass {
     public static final ObjectMapper JSON_MAPPER;
-    public static final YAMLMapper YAML_MAPPER = (YAMLMapper) new YAMLMapper().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
+    private static final SimpleModule MODULE = new SimpleModule("ProxyPass", Version.unknownVersion())
+            .addSerializer(Color.class, new ColorSerializer())
+            .addDeserializer(Color.class, new ColorDeserializer());
+
+    public static final YAMLMapper YAML_MAPPER = (YAMLMapper) new YAMLMapper()
+            .registerModule(MODULE)
+            .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
     public static final String MINECRAFT_VERSION;
 
     public static final BedrockCodec CODEC = Bedrock_v800.CODEC
@@ -90,7 +101,9 @@ public class ProxyPass {
         PRETTY_PRINTER.indentArraysWith(indenter);
         PRETTY_PRINTER.indentObjectsWith(indenter);
 
-        JSON_MAPPER = new ObjectMapper().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES).setDefaultPrettyPrinter(PRETTY_PRINTER);
+        JSON_MAPPER = new ObjectMapper()
+                .registerModule(MODULE)
+                .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES).setDefaultPrettyPrinter(PRETTY_PRINTER);
         MINECRAFT_VERSION = CODEC.getMinecraftVersion();
     }
 
