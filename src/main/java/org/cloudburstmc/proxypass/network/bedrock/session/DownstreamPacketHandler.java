@@ -12,6 +12,8 @@ import org.cloudburstmc.nbt.NbtMap;
 import org.cloudburstmc.nbt.NbtMapBuilder;
 import org.cloudburstmc.nbt.util.stream.LittleEndianDataOutputStream;
 import org.cloudburstmc.protocol.bedrock.BedrockSession;
+import org.cloudburstmc.protocol.bedrock.data.biome.BiomeDefinitionChunkGenData;
+import org.cloudburstmc.protocol.bedrock.data.biome.BiomeDefinitionData;
 import org.cloudburstmc.protocol.bedrock.data.definitions.BlockDefinition;
 import org.cloudburstmc.protocol.bedrock.data.definitions.ItemDefinition;
 import org.cloudburstmc.protocol.bedrock.data.definitions.SimpleItemDefinition;
@@ -59,7 +61,19 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
             proxy.saveNBT("biome_definitions", packet.getDefinitions());
         }
         if (packet.getBiomes() != null) {
-            proxy.saveJson("biome_definitions.json", packet.getBiomes());
+            Map<String, BiomeDefinitionData> definitions = packet.getBiomes().getDefinitions();
+            proxy.saveJson("biome_definitions.json", packet.getBiomes().getDefinitions());
+            Map<String, BiomeDefinitionData> strippedDefinitions = new LinkedHashMap<>();
+            for (Map.Entry<String, BiomeDefinitionData> entry : definitions.entrySet()) {
+                String id = entry.getKey();
+                BiomeDefinitionData data = entry.getValue();
+
+                strippedDefinitions.put(id, new BiomeDefinitionData(data.getId(), data.getTemperature(),
+                        data.getDownfall(), data.getRedSporeDensity(), data.getBlueSporeDensity(), data.getAshDensity(),
+                        data.getWhiteAshDensity(), data.getDepth(), data.getScale(), data.getMapWaterColor(),
+                        data.isRain(), data.getTags(), null));
+            }
+            proxy.saveJson("stripped_biome_definitions.json", strippedDefinitions);
         }
         return PacketSignal.UNHANDLED;
     }

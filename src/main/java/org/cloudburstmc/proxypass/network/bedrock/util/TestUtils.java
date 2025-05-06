@@ -42,6 +42,7 @@ public class TestUtils {
             try {
                 BedrockCodecHelper helper = session.getPeer().getCodecHelper();
                 ProxyPass.CODEC.tryEncode(helper, buffer, packet);
+                boolean packetFailed = false;
                 if (!IGNORE_BUFFER_TEST.contains(packet.getClass()) && !originalBuffer.equals(buffer)) {
                     // Something went wrong in serialization.
                     log.warn("Packet's buffers not equal for {}:\n Original  : {}\nRe-encoded : {}",
@@ -53,6 +54,8 @@ public class TestUtils {
                     // Something went wrong in serialization.
                     log.warn("Packet's instances not equal:\n Original  : {}\nRe-encoded : {}",
                             packet, packet2);
+                } else if (packetFailed) {
+                    log.info("Packet instances equal but buffers not equal for {}:", packet.getClass().getSimpleName());
                 }
             } catch (PacketSerializeException e) {
                 //ignore
