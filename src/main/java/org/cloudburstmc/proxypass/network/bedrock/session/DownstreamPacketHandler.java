@@ -12,12 +12,10 @@ import org.cloudburstmc.nbt.NbtMap;
 import org.cloudburstmc.nbt.NbtMapBuilder;
 import org.cloudburstmc.nbt.util.stream.LittleEndianDataOutputStream;
 import org.cloudburstmc.protocol.bedrock.BedrockSession;
-import org.cloudburstmc.protocol.bedrock.data.biome.BiomeDefinitionChunkGenData;
 import org.cloudburstmc.protocol.bedrock.data.biome.BiomeDefinitionData;
 import org.cloudburstmc.protocol.bedrock.data.definitions.BlockDefinition;
 import org.cloudburstmc.protocol.bedrock.data.definitions.ItemDefinition;
 import org.cloudburstmc.protocol.bedrock.data.definitions.SimpleItemDefinition;
-import org.cloudburstmc.protocol.bedrock.data.inventory.ContainerId;
 import org.cloudburstmc.protocol.bedrock.data.inventory.CreativeItemData;
 import org.cloudburstmc.protocol.bedrock.data.inventory.CreativeItemGroup;
 import org.cloudburstmc.protocol.bedrock.data.inventory.ItemData;
@@ -47,23 +45,27 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
         return PacketSignal.UNHANDLED;
     }
 
-    // Handles biome definitions when client-side chunk generation is enabled
+    // Legacy - Versions prior to 1.21.80 (800) when client-side chunk generation is enabled
     @Override
     public PacketSignal handle(CompressedBiomeDefinitionListPacket packet) {
         proxy.saveNBT("biome_definitions_full", packet.getDefinitions());
         return PacketSignal.UNHANDLED;
     }
 
-    // Handles biome definitions when client-side chunk generation is disabled
     @Override
     public PacketSignal handle(BiomeDefinitionListPacket packet) {
         if (packet.getDefinitions() != null) {
+            // Legacy - Versions prior to 1.21.80 (800) when client-side chunk generation is disabled
             proxy.saveNBT("biome_definitions", packet.getDefinitions());
         }
+
         if (packet.getBiomes() != null) {
             Map<String, BiomeDefinitionData> definitions = packet.getBiomes().getDefinitions();
-            proxy.saveJson("biome_definitions.json", packet.getBiomes().getDefinitions());
             Map<String, BiomeDefinitionData> strippedDefinitions = new LinkedHashMap<>();
+
+            // Enable client-side chunk generation
+            proxy.saveJson("biome_definitions.json", packet.getBiomes().getDefinitions());
+
             for (Map.Entry<String, BiomeDefinitionData> entry : definitions.entrySet()) {
                 String id = entry.getKey();
                 BiomeDefinitionData data = entry.getValue();
@@ -73,8 +75,10 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
                         data.getWhiteAshDensity(), data.getDepth(), data.getScale(), data.getMapWaterColor(),
                         data.isRain(), data.getTags(), null));
             }
+
             proxy.saveJson("stripped_biome_definitions.json", strippedDefinitions);
         }
+
         return PacketSignal.UNHANDLED;
     }
 
@@ -236,16 +240,6 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
         }
         return PacketSignal.UNHANDLED;
     }
-
-    // Handles creative items for versions prior to 1.16
-//    @SuppressWarnings("deprecation")
-//    @Override
-//    public PacketSignal handle(InventoryContentPacket packet) {
-//        if (packet.getContainerId() == ContainerId.CREATIVE) {
-//            dumpCreativeItems(packet.getContents().toArray(new ItemData[0]));
-//        }
-//        return PacketSignal.UNHANDLED;
-//    }
 
     private static Map<String, Integer> sortMap(Map<String, Integer> map) {
         return map.entrySet().stream()
