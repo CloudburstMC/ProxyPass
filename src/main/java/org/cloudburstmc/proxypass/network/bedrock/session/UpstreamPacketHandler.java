@@ -151,4 +151,11 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
         });
     }
 
+    @Override
+    public void onDisconnect(String reason) {
+        // Disconnect from the bedrock server when the client disconnects
+        if (this.session.getSendSession().isConnected()) {
+            this.session.getSendSession().disconnect(reason);
+        }
+    }
 }
