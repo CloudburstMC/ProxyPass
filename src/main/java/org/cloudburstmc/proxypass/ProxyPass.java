@@ -65,10 +65,7 @@ public class ProxyPass {
             .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
     public static final String MINECRAFT_VERSION;
 
-    public static final BedrockCodec CODEC = Bedrock_v800.CODEC
-            .toBuilder()
-            .deregisterPacket(AvailableCommandsPacket.class)
-            .build();
+    public static final BedrockCodec CODEC = Bedrock_v800.CODEC;
 
     public static final int PROTOCOL_VERSION = CODEC.getProtocolVersion();
     private static final BedrockPong ADVERTISEMENT = new BedrockPong()
