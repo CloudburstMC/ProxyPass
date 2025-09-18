@@ -8,7 +8,6 @@ import org.jose4j.jwt.NumericDate;
 import org.jose4j.jwx.HeaderParameterNames;
 import org.jose4j.lang.JoseException;
 
-import java.net.URI;
 import java.security.KeyPair;
 import java.util.Base64;
 import java.util.Date;

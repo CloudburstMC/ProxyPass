@@ -70,10 +70,7 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
                 String id = entry.getKey();
                 BiomeDefinitionData data = entry.getValue();
 
-                strippedDefinitions.put(id, new BiomeDefinitionData(data.getId(), data.getTemperature(),
-                        data.getDownfall(), data.getRedSporeDensity(), data.getBlueSporeDensity(), data.getAshDensity(),
-                        data.getWhiteAshDensity(), data.getDepth(), data.getScale(), data.getMapWaterColor(),
-                        data.isRain(), data.getTags(), null));
+                strippedDefinitions.put(id, new BiomeDefinitionData(data.getId(), data.getTemperature(), data.getDownfall(), data.getFoliageSnow(), data.getDepth(), data.getScale(), data.getMapWaterColor(), data.isRain(), data.getTags(), null));
             }
 
             proxy.saveJson("stripped_biome_definitions.json", strippedDefinitions);
