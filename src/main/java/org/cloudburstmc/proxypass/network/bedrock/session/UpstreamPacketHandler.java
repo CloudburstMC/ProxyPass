@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
+import net.kyori.adventure.text.Component;
 import org.cloudburstmc.protocol.bedrock.data.EncodingSettings;
 import org.cloudburstmc.protocol.bedrock.data.PacketCompressionAlgorithm;
 import org.cloudburstmc.protocol.bedrock.data.auth.AuthType;
@@ -99,7 +100,7 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
             skinData = new JSONObject(JsonUtil.parseJson(jws.getUnverifiedPayload()));
             initializeProxySession();
         } catch (Exception e) {
-            session.disconnect("disconnectionScreen.internalError.cantConnect");
+            session.disconnect(Component.text("disconnectionScreen.internalError.cantConnect"));
             throw new RuntimeException("Unable to complete login", e);
         }
         return PacketSignal.HANDLED;
@@ -148,7 +149,7 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
     }
 
     @Override
-    public void onDisconnect(String reason) {
+    public void onDisconnect(Component reason) {
         // Disconnect from the bedrock server when the client disconnects
         if (this.session.getSendSession().isConnected()) {
             this.session.getSendSession().disconnect(reason);
