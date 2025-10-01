@@ -1,7 +1,6 @@
 package org.cloudburstmc.proxypass.network.bedrock.session;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.util.ReferenceCountUtil;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.log4j.Log4j2;
