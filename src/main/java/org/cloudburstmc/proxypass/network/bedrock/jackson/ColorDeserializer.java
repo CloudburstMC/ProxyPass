@@ -1,13 +1,12 @@
 package org.cloudburstmc.proxypass.network.bedrock.jackson;
 
-import com.fasterxml.jackson.core.JacksonException;
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.JsonToken;
-import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.JsonParser;
+import tools.jackson.core.JsonToken;
+import tools.jackson.databind.DeserializationContext;
+import tools.jackson.databind.deser.std.StdDeserializer;
 
 import java.awt.*;
-import java.io.IOException;
 
 public class ColorDeserializer extends StdDeserializer<Color> {
 
@@ -16,15 +15,15 @@ public class ColorDeserializer extends StdDeserializer<Color> {
     }
 
     @Override
-    public Color deserialize(JsonParser jsonParser, DeserializationContext deserializationContext) throws IOException, JacksonException {
-        if (jsonParser.getCurrentToken().isStructStart()) {
+    public Color deserialize(JsonParser jsonParser, DeserializationContext deserializationContext) throws JacksonException {
+        if (jsonParser.currentToken().isStructStart()) {
             int alpha = 255;
             int red = 0;
             int green = 0;
             int blue = 0;
 
             while (jsonParser.nextToken() != null) {
-                String fieldName = jsonParser.getCurrentName();
+                String fieldName = jsonParser.currentName();
                 jsonParser.nextToken();
                 switch (fieldName) {
                     case "a" -> alpha = jsonParser.getIntValue();
@@ -34,7 +33,7 @@ public class ColorDeserializer extends StdDeserializer<Color> {
                 }
             }
             return new Color(red, green, blue, alpha);
-        } else if (jsonParser.getCurrentToken() == JsonToken.VALUE_NULL) {
+        } else if (jsonParser.currentToken() == JsonToken.VALUE_NULL) {
             return null;
         } else {
             throw deserializationContext.wrongTokenException(jsonParser, Color.class, JsonToken.START_OBJECT, "Expected a color object");

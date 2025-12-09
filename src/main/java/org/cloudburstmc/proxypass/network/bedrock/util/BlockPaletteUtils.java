@@ -1,7 +1,7 @@
 package org.cloudburstmc.proxypass.network.bedrock.util;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import lombok.Value;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import org.cloudburstmc.nbt.*;
 import org.cloudburstmc.proxypass.ProxyPass;
 
@@ -9,6 +9,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.*;
 
+@SuppressWarnings("unchecked")
 public class BlockPaletteUtils {
 
     public static void convertToJson(ProxyPass proxy, List<NbtMap> tags) {
@@ -87,18 +88,12 @@ public class BlockPaletteUtils {
         return hash;
     }
 
-    @Value
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    private static class Entry {
-        private final int id;
-        private final Integer meta;
-        private final String name;
-        private final Map<String, BlockState> states;
+    @JsonPropertyOrder({"id", "meta", "name", "states"})
+    private record Entry(int id, Integer meta, String name, Map<String, BlockState> states) {
     }
 
-    @Value
-    private static class BlockState {
-        private Object val;
-        private int type;
+    @JsonPropertyOrder({"val", "type"})
+    private record BlockState(Object val, int type) {
     }
 }

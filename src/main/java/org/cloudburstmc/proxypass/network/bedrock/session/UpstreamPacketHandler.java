@@ -1,7 +1,5 @@
 package org.cloudburstmc.proxypass.network.bedrock.session;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.JsonNodeType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.cloudburstmc.protocol.bedrock.data.EncodingSettings;
@@ -10,8 +8,9 @@ import org.cloudburstmc.protocol.bedrock.data.auth.AuthType;
 import org.cloudburstmc.protocol.bedrock.data.auth.CertificateChainPayload;
 import org.cloudburstmc.protocol.bedrock.packet.*;
 import org.cloudburstmc.protocol.bedrock.util.ChainValidationResult;
+import org.cloudburstmc.protocol.bedrock.util.ChainValidationResult.IdentityClaims;
+import org.cloudburstmc.protocol.bedrock.util.ChainValidationResult.IdentityData;
 import org.cloudburstmc.protocol.bedrock.util.EncryptionUtils;
-import org.cloudburstmc.protocol.bedrock.util.JsonUtils;
 import org.cloudburstmc.protocol.common.PacketSignal;
 import org.cloudburstmc.proxypass.ProxyPass;
 import org.cloudburstmc.proxypass.network.bedrock.util.ForgeryUtils;
@@ -24,10 +23,12 @@ import org.jose4j.lang.JoseException;
 import java.security.PublicKey;
 import java.security.interfaces.ECPublicKey;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 
 @Log4j2
 @RequiredArgsConstructor
+@SuppressWarnings("deprecation")
 public class UpstreamPacketHandler implements BedrockPacketHandler {
 
     private final ProxyServerSession session;
@@ -78,18 +79,12 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
             chain = EncryptionUtils.validatePayload(packet.getAuthPayload());
             clientJwt = packet.getClientJwt();
 
-            JsonNode payload = ProxyPass.JSON_MAPPER.valueToTree(chain.rawIdentityClaims());
+            IdentityClaims claims = chain.identityClaims();
+            IdentityData data = claims.extraData;
 
-            if (payload.get("extraData").getNodeType() != JsonNodeType.OBJECT) {
-                throw new RuntimeException("AuthData was not found!");
-            }
+            extraData = createExtraData(data);
 
-            extraData = new JSONObject(JsonUtils.childAsType(chain.rawIdentityClaims(), "extraData", Map.class));
-
-            if (payload.get("identityPublicKey").getNodeType() != JsonNodeType.STRING) {
-                throw new RuntimeException("Identity Public Key was not found!");
-            }
-            ECPublicKey identityPublicKey = EncryptionUtils.parseKey(payload.get("identityPublicKey").textValue());
+            ECPublicKey identityPublicKey = (ECPublicKey) claims.parsedIdentityPublicKey();
 
             String clientJwt = packet.getClientJwt();
             verifyJwt(clientJwt, identityPublicKey);
@@ -147,10 +142,25 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
         });
     }
 
+    private JSONObject createExtraData(IdentityData data) {
+        Map<String, Object> map = new HashMap<>();
+        putIfNotNull(map, "displayName", data.displayName);
+        putIfNotNull(map, "identity", data.identity);
+        putIfNotNull(map, "XUID", data.xuid);
+        putIfNotNull(map, "titleId", data.titleId);
+        putIfNotNull(map, "minecraftId", data.minecraftId);
+        return new JSONObject(map);
+    }
+
+    private void putIfNotNull(Map<String, Object> map, String key, Object value) {
+        if (value != null) {
+            map.put(key, value);
+        }
+    }
+
     @Override
     public void onDisconnect(CharSequence reason) {
-        // Disconnect from the bedrock server when the client disconnects
-        if (this.session.getSendSession().isConnected()) {
+        if (this.session.getSendSession() != null && this.session.getSendSession().isConnected()) {
             this.session.getSendSession().disconnect(reason);
         }
     }

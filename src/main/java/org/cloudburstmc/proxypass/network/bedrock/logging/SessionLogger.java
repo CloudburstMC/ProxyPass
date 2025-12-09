@@ -1,13 +1,12 @@
 package org.cloudburstmc.proxypass.network.bedrock.logging;
 
-import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectWriter;
 import lombok.extern.log4j.Log4j2;
 import org.cloudburstmc.protocol.bedrock.BedrockSession;
 import org.cloudburstmc.protocol.bedrock.packet.BedrockPacket;
 import org.cloudburstmc.proxypass.ProxyPass;
 import org.jose4j.json.internal.json_simple.JSONObject;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectWriter;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
@@ -53,7 +52,7 @@ public class SessionLogger {
     }
 
     public void start() {
-        if (proxy.getConfiguration().isLoggingPackets()){
+        if (proxy.getConfiguration().isLoggingPackets()) {
             if (proxy.getConfiguration().getLogTo().logToFile) {
                 log.debug("Packets will be logged under " + logPath.toString());
                 try {
@@ -76,17 +75,17 @@ public class SessionLogger {
     }
 
     public void saveJson(String name, JSONObject object) throws IOException {
-        ObjectWriter jsonout = ProxyPass.JSON_MAPPER.writer(new DefaultPrettyPrinter());
+        ObjectWriter jsonout = ProxyPass.JSON_MAPPER.writerWithDefaultPrettyPrinter();
         jsonout.writeValue(new FileOutputStream(logPath.getParent().resolve(name + ".json").toFile()), object);
     }
 
     public void saveJson(String name, JsonNode node) throws IOException {
-        ObjectWriter jsonout = ProxyPass.JSON_MAPPER.writer(new DefaultPrettyPrinter());
+        ObjectWriter jsonout = ProxyPass.JSON_MAPPER.writerWithDefaultPrettyPrinter();
         jsonout.writeValue(new FileOutputStream(logPath.getParent().resolve(name + ".json").toFile()), node);
     }
 
     public void saveJson(String name, byte[] encodedJsonString) {
-        Path geometryPath = dataPath.resolve(name +".json");
+        Path geometryPath = dataPath.resolve(name + ".json");
         try {
             Files.write(geometryPath, encodedJsonString, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
         } catch (IOException e) {
@@ -134,5 +133,4 @@ public class SessionLogger {
             }
         }
     }
-
 }

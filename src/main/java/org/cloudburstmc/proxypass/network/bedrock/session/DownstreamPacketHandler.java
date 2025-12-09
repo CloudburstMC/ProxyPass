@@ -2,12 +2,12 @@ package org.cloudburstmc.proxypass.network.bedrock.session;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.RequiredArgsConstructor;
-import lombok.Value;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+import lombok.*;
 import lombok.extern.log4j.Log4j2;
-import org.cloudburstmc.nbt.*;
+import org.cloudburstmc.nbt.NBTOutputStream;
+import org.cloudburstmc.nbt.NbtMap;
+import org.cloudburstmc.nbt.NbtMapBuilder;
 import org.cloudburstmc.nbt.util.stream.LittleEndianDataOutputStream;
 import org.cloudburstmc.protocol.bedrock.BedrockSession;
 import org.cloudburstmc.protocol.bedrock.data.biome.BiomeDefinitionData;
@@ -32,6 +32,7 @@ import java.util.stream.Collectors;
 
 @Log4j2
 @RequiredArgsConstructor
+@SuppressWarnings("deprecation")
 public class DownstreamPacketHandler implements BedrockPacketHandler {
     private final BedrockSession session;
     private final ProxyPlayerSession player;
@@ -160,8 +161,8 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
 
 
             for (DataEntry entry : itemData) {
-                ProxyPass.legacyIdMap.put(entry.getId(), entry.getName());
-                builder.add(new SimpleItemDefinition(entry.getName(), entry.getId(), false));
+                ProxyPass.legacyIdMap.put(entry.id(), entry.name());
+                builder.add(new SimpleItemDefinition(entry.name(), entry.id(), false));
             }
 
             SimpleDefinitionRegistry<ItemDefinition> itemDefinitions = builder.build();
@@ -267,8 +268,10 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
         }
     }
 
+    @EqualsAndHashCode(callSuper = true)
     @Value
     @JsonInclude(JsonInclude.Include.NON_NULL)
+    @JsonPropertyOrder({"id", "damage", "blockRuntimeId", "groupId", "block_state_b64", "nbt_b64"})
     private static class CreativeItemEntry extends ItemEntry {
         private final int groupId;
 
@@ -281,6 +284,7 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
     @Data
     @AllArgsConstructor
     @JsonInclude(JsonInclude.Include.NON_NULL)
+    @JsonPropertyOrder({"id", "damage", "blockRuntimeId", "block_state_b64", "nbt_b64"})
     private static class ItemEntry {
         private final String id;
         private final Integer damage;
@@ -291,15 +295,13 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
         private final String nbt;
     }
 
-    @Value
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    private static class CreativeGroup {
-        private final String name;
-        private final String category;
-        private final ItemEntry icon;
+    @JsonPropertyOrder({"name", "category", "icon"})
+    private record CreativeGroup(String name, String category, ItemEntry icon) {
     }
 
     @Value
+    @JsonPropertyOrder({"name", "id", "data"})
     private static class RuntimeEntry {
         private static final Comparator<RuntimeEntry> COMPARATOR = Comparator.comparingInt(RuntimeEntry::getId)
                 .thenComparingInt(RuntimeEntry::getData);
@@ -309,11 +311,7 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
         private final int data;
     }
 
-    @Value
-    private static class DataEntry {
-        private final String name;
-        private final int id;
-        private final int version;
-        private final boolean componentBased;
+    @JsonPropertyOrder({"name", "id", "version", "componentBased"})
+    private record DataEntry(String name, int id, int version, boolean componentBased) {
     }
 }

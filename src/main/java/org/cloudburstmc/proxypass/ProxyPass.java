@@ -1,14 +1,5 @@
 package org.cloudburstmc.proxypass;
 
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.core.Version;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.core.util.DefaultIndenter;
-import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.module.SimpleModule;
-import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
@@ -25,7 +16,7 @@ import org.cloudburstmc.netty.channel.raknet.config.RakChannelOption;
 import org.cloudburstmc.protocol.bedrock.BedrockPeer;
 import org.cloudburstmc.protocol.bedrock.BedrockPong;
 import org.cloudburstmc.protocol.bedrock.codec.BedrockCodec;
-import org.cloudburstmc.protocol.bedrock.codec.v844.Bedrock_v844;
+import org.cloudburstmc.protocol.bedrock.codec.v898.Bedrock_v898;
 import org.cloudburstmc.protocol.bedrock.data.definitions.BlockDefinition;
 import org.cloudburstmc.protocol.bedrock.netty.BedrockPacketWrapper;
 import org.cloudburstmc.protocol.bedrock.netty.initializer.BedrockChannelInitializer;
@@ -37,7 +28,18 @@ import org.cloudburstmc.proxypass.network.bedrock.session.ProxyClientSession;
 import org.cloudburstmc.proxypass.network.bedrock.session.ProxyServerSession;
 import org.cloudburstmc.proxypass.network.bedrock.session.UpstreamPacketHandler;
 import org.cloudburstmc.proxypass.network.bedrock.util.NbtBlockDefinitionRegistry;
+import org.cloudburstmc.proxypass.network.bedrock.util.NbtBlockDefinitionRegistry.NbtBlockDefinition;
 import org.cloudburstmc.proxypass.network.bedrock.util.UnknownBlockDefinitionRegistry;
+import tools.jackson.core.Version;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.core.util.DefaultIndenter;
+import tools.jackson.core.util.DefaultPrettyPrinter;
+import tools.jackson.core.util.Separators;
+import tools.jackson.databind.DeserializationFeature;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.module.SimpleModule;
+import tools.jackson.dataformat.yaml.YAMLMapper;
 
 import java.awt.*;
 import java.io.IOException;
@@ -54,18 +56,18 @@ import java.util.function.Consumer;
 @Getter
 public class ProxyPass {
     public static final ObjectMapper JSON_MAPPER;
+    public static final YAMLMapper YAML_MAPPER;
+
     private static final SimpleModule MODULE = new SimpleModule("ProxyPass", Version.unknownVersion())
             .addSerializer(Color.class, new ColorSerializer())
             .addDeserializer(Color.class, new ColorDeserializer())
-            .addSerializer(NbtBlockDefinitionRegistry.NbtBlockDefinition.class, new NbtDefinitionSerializer());
+            .addSerializer(NbtBlockDefinition.class, new NbtDefinitionSerializer());
 
-    public static final YAMLMapper YAML_MAPPER = (YAMLMapper) new YAMLMapper()
-            .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
     public static final String MINECRAFT_VERSION;
 
-    public static final BedrockCodec CODEC = Bedrock_v844.CODEC;
-
+    public static final BedrockCodec CODEC = Bedrock_v898.CODEC;
     public static final int PROTOCOL_VERSION = CODEC.getProtocolVersion();
+
     private static final BedrockPong ADVERTISEMENT = new BedrockPong()
             .edition("MCPE")
             .gameType("Survival")
@@ -76,29 +78,32 @@ public class ProxyPass {
             .maximumPlayerCount(20)
             .subMotd("https://github.com/CloudburstMC/ProxyPass")
             .nintendoLimited(false);
+
     private static final DefaultPrettyPrinter PRETTY_PRINTER;
+
     public static Map<Integer, String> legacyIdMap = new HashMap<>();
 
     static {
-        PRETTY_PRINTER = new DefaultPrettyPrinter() {
-            @Override
-            public DefaultPrettyPrinter createInstance() {
-                return this;
-            }
-
-            @Override
-            public void writeObjectFieldValueSeparator(JsonGenerator generator) throws IOException {
-                generator.writeRaw(": ");
-            }
-        };
-
         DefaultIndenter indenter = new DefaultIndenter("    ", "\n");
-        PRETTY_PRINTER.indentArraysWith(indenter);
-        PRETTY_PRINTER.indentObjectsWith(indenter);
+        Separators separators = Separators.createDefaultInstance()
+                .withObjectNameValueSpacing(Separators.Spacing.AFTER);
 
-        JSON_MAPPER = new ObjectMapper()
-                .registerModule(MODULE)
-                .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES).setDefaultPrettyPrinter(PRETTY_PRINTER);
+        DefaultPrettyPrinter printer = new DefaultPrettyPrinter().withSeparators(separators);
+        printer.indentArraysWith(indenter);
+        printer.indentObjectsWith(indenter);
+
+        PRETTY_PRINTER = printer;
+
+        JSON_MAPPER = JsonMapper.builder()
+                .addModule(MODULE)
+                .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+                .defaultPrettyPrinter(PRETTY_PRINTER)
+                .build();
+
+        YAML_MAPPER = YAMLMapper.builder()
+                .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+                .build();
+
         MINECRAFT_VERSION = CODEC.getMinecraftVersion();
     }
 
@@ -286,7 +291,7 @@ public class ProxyPass {
     public void saveJson(String name, Object object) {
         Path outPath = dataDir.resolve(name);
         try (OutputStream outputStream = Files.newOutputStream(outPath, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE)) {
-            ProxyPass.JSON_MAPPER.writer(PRETTY_PRINTER).writeValue(outputStream, object);
+            ProxyPass.JSON_MAPPER.writerWithDefaultPrettyPrinter().writeValue(outputStream, object);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

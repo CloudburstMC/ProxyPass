@@ -4,9 +4,7 @@ import org.cloudburstmc.protocol.bedrock.BedrockSession;
 import org.cloudburstmc.proxypass.ProxyPass;
 
 public interface ProxySession {
-
     ProxyPass getProxyPass();
-
 
     BedrockSession getSendSession();
 

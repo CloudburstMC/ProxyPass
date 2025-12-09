@@ -1,11 +1,11 @@
 package org.cloudburstmc.proxypass.network.bedrock.jackson;
 
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.SerializerProvider;
-import com.fasterxml.jackson.databind.ser.std.StdSerializer;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.JsonGenerator;
+import tools.jackson.databind.SerializationContext;
+import tools.jackson.databind.ser.std.StdSerializer;
 
 import java.awt.*;
-import java.io.IOException;
 
 public class ColorSerializer extends StdSerializer<Color> {
 
@@ -14,16 +14,16 @@ public class ColorSerializer extends StdSerializer<Color> {
     }
 
     @Override
-    public void serialize(Color color, JsonGenerator jsonGenerator, SerializerProvider serializerProvider) throws IOException {
-        if (color == null) {
-            jsonGenerator.writeNull();
+    public void serialize(Color value, JsonGenerator gen, SerializationContext provider) throws JacksonException {
+        if (value == null) {
+            gen.writeNull();
         } else {
-            jsonGenerator.writeStartObject();
-            jsonGenerator.writeNumberField("a", color.getAlpha());
-            jsonGenerator.writeNumberField("r", color.getRed());
-            jsonGenerator.writeNumberField("g", color.getGreen());
-            jsonGenerator.writeNumberField("b", color.getBlue());
-            jsonGenerator.writeEndObject();
+            gen.writeStartObject();
+            gen.writeNumberProperty("a", value.getAlpha());
+            gen.writeNumberProperty("r", value.getRed());
+            gen.writeNumberProperty("g", value.getGreen());
+            gen.writeNumberProperty("b", value.getBlue());
+            gen.writeEndObject();
         }
     }
 }

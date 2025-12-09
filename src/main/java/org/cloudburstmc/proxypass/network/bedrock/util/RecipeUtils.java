@@ -1,6 +1,7 @@
 package org.cloudburstmc.proxypass.network.bedrock.util;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import lombok.*;
 import lombok.experimental.UtilityClass;
 import org.cloudburstmc.nbt.NBTOutputStream;
@@ -200,6 +201,7 @@ public class RecipeUtils {
     @AllArgsConstructor
     @Getter
     @JsonInclude(JsonInclude.Include.NON_NULL)
+    @JsonPropertyOrder({"id", "type", "input", "output", "shape", "block", "uuid", "priority"})
     private static class CraftingDataEntry {
         private String id;
         private int type;
@@ -214,6 +216,7 @@ public class RecipeUtils {
     @AllArgsConstructor
     @Getter
     @JsonInclude(JsonInclude.Include.NON_NULL)
+    @JsonPropertyOrder({"inputId", "inputMeta", "reagentId", "reagentMeta", "outputId", "outputMeta"})
     private static class PotionMixDataEntry {
         private String inputId;
         private int inputMeta;
@@ -226,6 +229,7 @@ public class RecipeUtils {
     @AllArgsConstructor
     @Getter
     @JsonInclude(JsonInclude.Include.NON_NULL)
+    @JsonPropertyOrder({"inputId", "reagentId", "outputId"})
     private static class ContainerMixDataEntry {
         private String inputId;
         private String reagentId;
@@ -234,6 +238,7 @@ public class RecipeUtils {
 
     @Value
     @JsonInclude(JsonInclude.Include.NON_NULL)
+    @JsonPropertyOrder({"legacyId", "id", "damage", "count", "nbt_b64"})
     private static class Item {
         public static final Item EMPTY = new Item(0, "minecraft:air", null, null, null);
 
@@ -245,6 +250,7 @@ public class RecipeUtils {
     }
 
     @Value
+    @JsonPropertyOrder({"version", "recipes", "potionMixes", "containerMixes"})
     private static class Recipes {
         int version;
         List<CraftingDataEntry> recipes;
@@ -254,6 +260,7 @@ public class RecipeUtils {
 
     @Data
     @JsonInclude(JsonInclude.Include.NON_NULL)
+    @JsonPropertyOrder({"type", "count", "itemId", "auxValue", "fullName", "itemTag", "tagExpression", "molangVersion"})
     private static class Descriptor {
         String type;
         int count;
