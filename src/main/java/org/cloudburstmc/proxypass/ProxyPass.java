@@ -16,7 +16,7 @@ import org.cloudburstmc.netty.channel.raknet.config.RakChannelOption;
 import org.cloudburstmc.protocol.bedrock.BedrockPeer;
 import org.cloudburstmc.protocol.bedrock.BedrockPong;
 import org.cloudburstmc.protocol.bedrock.codec.BedrockCodec;
-import org.cloudburstmc.protocol.bedrock.codec.v898.Bedrock_v898;
+import org.cloudburstmc.protocol.bedrock.codec.v924.Bedrock_v924;
 import org.cloudburstmc.protocol.bedrock.data.definitions.BlockDefinition;
 import org.cloudburstmc.protocol.bedrock.netty.BedrockPacketWrapper;
 import org.cloudburstmc.protocol.bedrock.netty.initializer.BedrockChannelInitializer;
@@ -65,7 +65,7 @@ public class ProxyPass {
 
     public static final String MINECRAFT_VERSION;
 
-    public static final BedrockCodec CODEC = Bedrock_v898.CODEC;
+    public static final BedrockCodec CODEC = Bedrock_v924.CODEC;
     public static final int PROTOCOL_VERSION = CODEC.getProtocolVersion();
 
     private static final BedrockPong ADVERTISEMENT = new BedrockPong()
@@ -316,7 +316,7 @@ public class ProxyPass {
     }
 
     public void savePacket(BedrockPacketWrapper wrapper) {
-        String name = wrapper.getPacket().getPacketType().name().toLowerCase() + "_" + System.currentTimeMillis() + ".dat";
+        String name = wrapper.getPacket().getPacketType().getName().toLowerCase() + "_" + System.currentTimeMillis() + ".dat";
 
         ByteBuf packetBuf = wrapper.getPacketBuffer().slice();
         packetBuf.skipBytes(wrapper.getHeaderLength()); // skip header
