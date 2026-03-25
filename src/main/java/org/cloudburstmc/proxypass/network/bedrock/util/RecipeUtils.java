@@ -11,6 +11,7 @@ import org.cloudburstmc.protocol.bedrock.data.inventory.ItemData;
 import org.cloudburstmc.protocol.bedrock.data.inventory.crafting.ContainerMixData;
 import org.cloudburstmc.protocol.bedrock.data.inventory.crafting.CraftingDataType;
 import org.cloudburstmc.protocol.bedrock.data.inventory.crafting.PotionMixData;
+import org.cloudburstmc.protocol.bedrock.data.inventory.crafting.RecipeUnlockingRequirement;
 import org.cloudburstmc.protocol.bedrock.data.inventory.crafting.recipe.*;
 import org.cloudburstmc.protocol.bedrock.data.inventory.descriptor.*;
 import org.cloudburstmc.protocol.bedrock.packet.CraftingDataPacket;
@@ -45,9 +46,13 @@ public class RecipeUtils {
                 entry.id = craftingRecipe.getId();
                 entry.priority = craftingRecipe.getPriority();
                 entry.output = writeItemArray(craftingRecipe.getResults().toArray(new ItemData[0]));
+                RecipeUnlockingRequirement requirement = craftingRecipe.getRequirement();
+                if (requirement != null && requirement.getContext() != RecipeUnlockingRequirement.UnlockingContext.NONE) {
+                    entry.unlockContext = requirement.getContext().name();
+                }
             }
-            if (recipe instanceof ShapedRecipeData shapedRecipe) {
 
+            if (recipe instanceof ShapedRecipeData shapedRecipe) {
                 int charCounter = 0;
                 // ItemData[] inputs = craftingData.getInputs().toArray(new ItemData[0]);
                 List<ItemDescriptorWithCount> inputs = shapedRecipe.getIngredients();
@@ -86,9 +91,28 @@ public class RecipeUtils {
                     itemMap.put(mapEntry.getValue(), mapEntry.getKey());
                 }
                 entry.input = itemMap;
+                entry.assumeSymetry = shapedRecipe.isAssumeSymetry();
             }
+
             if (recipe instanceof ShapelessRecipeData shapelessRecipe) {
                 entry.input = writeDescriptorArray(shapelessRecipe.getIngredients());
+            }
+
+            if (recipe instanceof SmithingTransformRecipeData smithingTransform) {
+                Map<String, Descriptor> smithingInput = new LinkedHashMap<>();
+                smithingInput.put("template", fromNetwork(smithingTransform.getTemplate()));
+                smithingInput.put("base", fromNetwork(smithingTransform.getBase()));
+                smithingInput.put("addition", fromNetwork(smithingTransform.getAddition()));
+                entry.input = smithingInput;
+                entry.output = itemFromNetwork(smithingTransform.getResult());
+            }
+
+            if (recipe instanceof SmithingTrimRecipeData smithingTrim) {
+                Map<String, Descriptor> smithingInput = new LinkedHashMap<>();
+                smithingInput.put("base", fromNetwork(smithingTrim.getBase()));
+                smithingInput.put("addition", fromNetwork(smithingTrim.getAddition()));
+                smithingInput.put("template", fromNetwork(smithingTrim.getTemplate()));
+                entry.input = smithingInput;
             }
 
             if (recipe instanceof FurnaceRecipeData furnaceRecipe) {
@@ -100,6 +124,7 @@ public class RecipeUtils {
             }
             entries.add(entry);
         }
+
         for (PotionMixData potion : packet.getPotionMixData()) {
             potions.add(new PotionMixDataEntry(
                     ProxyPass.legacyIdMap.get(potion.getInputId()),
@@ -120,7 +145,6 @@ public class RecipeUtils {
         }
 
         Recipes recipes = new Recipes(ProxyPass.CODEC.getProtocolVersion(), entries, potions, containers);
-
         proxy.saveJson("recipes.json", recipes);
     }
 
@@ -183,13 +207,17 @@ public class RecipeUtils {
         ItemDescriptor itemDescriptor = descriptorWithCount.getDescriptor();
 
         if (itemDescriptor instanceof DefaultDescriptor) {
-            descriptor.setItemId(((DefaultDescriptor) itemDescriptor).getItemId().getRuntimeId());
+            int runtimeId = ((DefaultDescriptor) itemDescriptor).getItemId().getRuntimeId();
+            descriptor.setItemId(runtimeId);
+            descriptor.setId(ProxyPass.legacyIdMap.get(runtimeId));
             descriptor.setAuxValue(((DefaultDescriptor) itemDescriptor).getAuxValue());
         } else if (itemDescriptor instanceof MolangDescriptor) {
             descriptor.setTagExpression(((MolangDescriptor) itemDescriptor).getTagExpression());
             descriptor.setMolangVersion(((MolangDescriptor) itemDescriptor).getMolangVersion());
         } else if (itemDescriptor instanceof ItemTagDescriptor) {
             descriptor.setItemTag(((ItemTagDescriptor) itemDescriptor).getItemTag());
+        } else if (itemDescriptor instanceof ComplexAliasDescriptor) {
+            descriptor.setComplexAliasName(((ComplexAliasDescriptor) itemDescriptor).getName());
         } else if (itemDescriptor instanceof DeferredDescriptor) {
             descriptor.setFullName(((DeferredDescriptor) itemDescriptor).getFullName());
             descriptor.setAuxValue(((DeferredDescriptor) itemDescriptor).getAuxValue());
@@ -201,7 +229,7 @@ public class RecipeUtils {
     @AllArgsConstructor
     @Getter
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    @JsonPropertyOrder({"id", "type", "input", "output", "shape", "block", "uuid", "priority"})
+    @JsonPropertyOrder({"id", "type", "input", "output", "shape", "block", "uuid", "priority", "assumeSymetry", "unlockContext"})
     private static class CraftingDataEntry {
         private String id;
         private int type;
@@ -211,6 +239,8 @@ public class RecipeUtils {
         private String block;
         private UUID uuid;
         private Integer priority;
+        private Boolean assumeSymetry;
+        private String unlockContext;
     }
 
     @AllArgsConstructor
@@ -236,41 +266,33 @@ public class RecipeUtils {
         private String outputId;
     }
 
-    @Value
     @JsonInclude(JsonInclude.Include.NON_NULL)
     @JsonPropertyOrder({"legacyId", "id", "damage", "count", "nbt_b64"})
-    private static class Item {
+    private record Item(int legacyId, String id, Integer damage, Integer count, String nbt_b64) {
         public static final Item EMPTY = new Item(0, "minecraft:air", null, null, null);
 
-        int legacyId;
-        String id;
-        Integer damage;
-        Integer count;
-        String nbt_b64;
     }
 
-    @Value
     @JsonPropertyOrder({"version", "recipes", "potionMixes", "containerMixes"})
-    private static class Recipes {
-        int version;
-        List<CraftingDataEntry> recipes;
-        List<PotionMixDataEntry> potionMixes;
-        List<ContainerMixDataEntry> containerMixes;
+    private record Recipes(int version, List<CraftingDataEntry> recipes, List<PotionMixDataEntry> potionMixes, List<ContainerMixDataEntry> containerMixes) {
     }
 
     @Data
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    @JsonPropertyOrder({"type", "count", "itemId", "auxValue", "fullName", "itemTag", "tagExpression", "molangVersion"})
+    @JsonPropertyOrder({"type", "count", "id", "itemId", "auxValue", "fullName", "itemTag", "complexAliasName", "tagExpression", "molangVersion"})
     private static class Descriptor {
         String type;
         int count;
         // Default descriptor
+        String id;
         Integer itemId;
         Integer auxValue;
         // Deferred descriptor
         String fullName;
         // Item tag descriptor
         String itemTag;
+        // Complex alias descriptor
+        String complexAliasName;
         // Molang descriptor
         String tagExpression;
         Integer molangVersion;
