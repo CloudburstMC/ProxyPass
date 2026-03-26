@@ -75,11 +75,13 @@ public class SessionLogger {
     }
 
     public void saveJson(String name, JSONObject object) throws IOException {
+        Files.createDirectories(dataPath);
         ObjectWriter jsonout = ProxyPass.JSON_MAPPER.writerWithDefaultPrettyPrinter();
         jsonout.writeValue(new FileOutputStream(logPath.getParent().resolve(name + ".json").toFile()), object);
     }
 
     public void saveJson(String name, JsonNode node) throws IOException {
+        Files.createDirectories(dataPath);
         ObjectWriter jsonout = ProxyPass.JSON_MAPPER.writerWithDefaultPrettyPrinter();
         jsonout.writeValue(new FileOutputStream(logPath.getParent().resolve(name + ".json").toFile()), node);
     }
@@ -87,6 +89,7 @@ public class SessionLogger {
     public void saveJson(String name, byte[] encodedJsonString) {
         Path geometryPath = dataPath.resolve(name + ".json");
         try {
+            Files.createDirectories(dataPath);
             Files.write(geometryPath, encodedJsonString, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
         } catch (IOException e) {
             throw new RuntimeException(e);

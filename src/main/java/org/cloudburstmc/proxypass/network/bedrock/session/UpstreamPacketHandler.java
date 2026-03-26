@@ -5,11 +5,10 @@ import lombok.extern.log4j.Log4j2;
 import org.cloudburstmc.protocol.bedrock.data.EncodingSettings;
 import org.cloudburstmc.protocol.bedrock.data.PacketCompressionAlgorithm;
 import org.cloudburstmc.protocol.bedrock.data.auth.AuthType;
-import org.cloudburstmc.protocol.bedrock.data.auth.CertificateChainPayload;
+import org.cloudburstmc.protocol.bedrock.data.auth.TokenPayload;
 import org.cloudburstmc.protocol.bedrock.packet.*;
 import org.cloudburstmc.protocol.bedrock.util.ChainValidationResult;
 import org.cloudburstmc.protocol.bedrock.util.ChainValidationResult.IdentityClaims;
-import org.cloudburstmc.protocol.bedrock.util.ChainValidationResult.IdentityData;
 import org.cloudburstmc.protocol.bedrock.util.EncryptionUtils;
 import org.cloudburstmc.protocol.common.PacketSignal;
 import org.cloudburstmc.proxypass.ProxyPass;
@@ -22,9 +21,6 @@ import org.jose4j.lang.JoseException;
 
 import java.security.PublicKey;
 import java.security.interfaces.ECPublicKey;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
 
 @Log4j2
 @RequiredArgsConstructor
@@ -34,7 +30,6 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
     private final ProxyServerSession session;
     private final ProxyPass proxy;
     private JSONObject skinData;
-    private JSONObject extraData;
     private ChainValidationResult chain;
     private String clientJwt;
     private ProxyPlayerSession player;
@@ -80,9 +75,6 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
             clientJwt = packet.getClientJwt();
 
             IdentityClaims claims = chain.identityClaims();
-            IdentityData data = claims.extraData;
-
-            extraData = createExtraData(data);
 
             ECPublicKey identityPublicKey = (ECPublicKey) claims.parsedIdentityPublicKey();
 
@@ -123,11 +115,11 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
             } catch (Exception e) {
                 log.error("JSON output error: " + e.getMessage(), e);
             }
-            String authData = ForgeryUtils.forgeAuthData(proxySession.getProxyKeyPair(), this.extraData);
+            String authToken = ForgeryUtils.forgeToken(proxySession.getProxyKeyPair(), this.chain.identityClaims().extraData);
             String skinData = ForgeryUtils.forgeSkinData(proxySession.getProxyKeyPair(), this.skinData);
 
             LoginPacket login = new LoginPacket();
-            login.setAuthPayload(new CertificateChainPayload(Collections.singletonList(authData), AuthType.SELF_SIGNED));
+            login.setAuthPayload(new TokenPayload(authToken, AuthType.SELF_SIGNED));
             login.setClientJwt(skinData);
             login.setProtocolVersion(ProxyPass.PROTOCOL_VERSION);
 
@@ -140,22 +132,6 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
 
             //SkinUtils.saveSkin(proxySession, this.skinData);
         });
-    }
-
-    private JSONObject createExtraData(IdentityData data) {
-        Map<String, Object> map = new HashMap<>();
-        putIfNotNull(map, "displayName", data.displayName);
-        putIfNotNull(map, "identity", data.identity);
-        putIfNotNull(map, "XUID", data.xuid);
-        putIfNotNull(map, "titleId", data.titleId);
-        putIfNotNull(map, "minecraftId", data.minecraftId);
-        return new JSONObject(map);
-    }
-
-    private void putIfNotNull(Map<String, Object> map, String key, Object value) {
-        if (value != null) {
-            map.put(key, value);
-        }
     }
 
     @Override
