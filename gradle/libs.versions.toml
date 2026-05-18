@@ -1,18 +1,18 @@
 [versions]
-protocol = "3.0.0.Beta12-20260323.133126-11"
-jackson = "3.1.0"
+protocol = "3.0.0.Beta12-20260515.193709-23"
+jackson = "3.1.3"
 
 [libraries]
-bedrock-codec = { group = "org.cloudburstmc.protocol", name = "bedrock-codec", version.ref = "protocol" }
+bedrock-codec = { group = "org.cloudburstmc.protocol", name = "bedrock-codec", version = "3.0.0.Beta12-20260515.193709-22" } # out of sync
 bedrock-common = { group = "org.cloudburstmc.protocol", name = "common", version.ref = "protocol" }
 bedrock-connection = { group = "org.cloudburstmc.protocol", name = "bedrock-connection", version.ref = "protocol" }
 common = { group = "com.nukkitx", name = "common", version = "1.0.1-SNAPSHOT" }
 jackson-databind = { group = "tools.jackson.core", name = "jackson-databind", version.ref = "jackson" }
 jackson-dataformat-yaml = { group = "tools.jackson.dataformat", name = "jackson-dataformat-yaml", version.ref = "jackson" }
-jansi = { group = "org.fusesource.jansi", name = "jansi", version = "2.4.2" }
-jline-reader = { group = "org.jline", name = "jline-reader", version = "4.0.7" }
-lombok = { group = "org.projectlombok", name = "lombok", version = "1.18.44" }
+jansi = { group = "org.fusesource.jansi", name = "jansi", version = "2.4.3" }
+jline-reader = { group = "org.jline", name = "jline-reader", version = "4.1.0" }
+lombok = { group = "org.projectlombok", name = "lombok", version = "1.18.46" }
 spotbugs-annotations = { group = "com.github.spotbugs", name = "spotbugs-annotations", version = "4.9.8" }
 
 [plugins]
-shadow = { id = "com.gradleup.shadow", version = "9.4.0" }
+shadow = { id = "com.gradleup.shadow", version = "9.4.1" }

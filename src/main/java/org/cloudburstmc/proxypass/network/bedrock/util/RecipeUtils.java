@@ -54,7 +54,6 @@ public class RecipeUtils {
 
             if (recipe instanceof ShapedRecipeData shapedRecipe) {
                 int charCounter = 0;
-                // ItemData[] inputs = craftingData.getInputs().toArray(new ItemData[0]);
                 List<ItemDescriptorWithCount> inputs = shapedRecipe.getIngredients();
                 Map<Descriptor, Character> charItemMap = new HashMap<>();
                 char[][] shape = new char[shapedRecipe.getHeight()][shapedRecipe.getWidth()];
@@ -115,6 +114,7 @@ public class RecipeUtils {
                 entry.input = smithingInput;
             }
 
+            // Since v975 (1.26.20) furnace recipes are encoded as shapeless recipes, retained here for backwards compatibility
             if (recipe instanceof FurnaceRecipeData furnaceRecipe) {
                 Integer damage = furnaceRecipe.getInputData();
                 if (damage == 0x7fff) damage = -1;
