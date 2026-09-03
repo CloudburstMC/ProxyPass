@@ -148,6 +148,12 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
     }
 
     @Override
+    public PacketSignal handle(JigsawStructureDataPacket packet) {
+        proxy.saveNBTFile("jigsaw_structure_data.nbt", packet.getJigsawStructureDataTag());
+        return PacketSignal.UNHANDLED;
+    }
+
+    @Override
     public PacketSignal handle(SyncEntityPropertyPacket packet) {
         entityProperties.add(packet.getData());
         NbtMapBuilder root = NbtMap.builder();

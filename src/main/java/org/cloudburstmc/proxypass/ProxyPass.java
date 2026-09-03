@@ -259,7 +259,11 @@ public class ProxyPass {
     }
 
     public void saveNBT(String dataName, Object dataTag) {
-        Path path = dataDir.resolve(dataName + ".dat");
+        saveNBTFile(dataName + ".dat", dataTag);
+    }
+
+    public void saveNBTFile(String fileName, Object dataTag) {
+        Path path = dataDir.resolve(fileName);
         try (OutputStream outputStream = Files.newOutputStream(path, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
              NBTOutputStream nbtOutputStream = NbtUtils.createNetworkWriter(outputStream)) {
             nbtOutputStream.writeTag(dataTag);
