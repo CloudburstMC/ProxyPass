@@ -2,6 +2,7 @@ package org.cloudburstmc.proxypass;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
+import lombok.Setter;
 import lombok.ToString;
 import org.cloudburstmc.netty.channel.nethernet.signaling.HttpSignalingSettings;
 import org.cloudburstmc.proxypass.network.Transport;
@@ -20,6 +21,7 @@ import java.util.Locale;
 import java.util.Set;
 
 @Getter
+@Setter
 @ToString
 public class Configuration {
 
@@ -40,9 +42,20 @@ public class Configuration {
     private int maxClients = 0;
     @JsonProperty("log-to")
     private LogTo logTo = LogTo.FILE;
+    @JsonProperty("ignore-resource-packs")
+    private boolean ignoreResourcePacks = false;
 
     @JsonProperty("ignored-packets")
     private Set<String> ignoredPackets = Collections.emptySet();
+    @JsonProperty("blocked-packets")
+    private Set<String> blockedPackets = Collections.emptySet();
+
+    @JsonProperty("online-mode")
+    private boolean onlineMode = true;
+    @JsonProperty("save-auth-details")
+    private boolean saveAuthDetails = true;
+    @JsonProperty("default-account-name")
+    private String defaultAccountName = "";
 
     public static Configuration load(Path path) throws IOException {
         try (BufferedReader reader = Files.newBufferedReader(path)) {
@@ -80,6 +93,13 @@ public class Configuration {
             return new InetSocketAddress(host, port);
         }
 
+        public static Address from(InetSocketAddress address) {
+            Address a = new Address();
+            a.host = address.getHostString();
+            a.port = address.getPort();
+            return a;
+        }
+
         public HttpSignalingSettings signalingSettings() {
             return HttpSignalingSettings.DEFAULT.withScheme(
                     HttpSignalingSettings.Scheme.valueOf(this.signalingScheme.toUpperCase(Locale.ROOT)));
@@ -98,7 +118,7 @@ public class Configuration {
         private String tlsPrivateKey;
     }
 
-    private void validate() throws IOException {
+    public void validate() throws IOException {
         if (this.transport == null || this.destination == null || this.nethernet == null || this.maxClients < 0) {
             throw new IOException("Invalid proxy configuration");
         }

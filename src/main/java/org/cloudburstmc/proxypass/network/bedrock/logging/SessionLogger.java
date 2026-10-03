@@ -4,6 +4,7 @@ import lombok.extern.log4j.Log4j2;
 import org.cloudburstmc.protocol.bedrock.BedrockSession;
 import org.cloudburstmc.protocol.bedrock.packet.BedrockPacket;
 import org.cloudburstmc.proxypass.ProxyPass;
+import org.cloudburstmc.proxypass.network.bedrock.session.ProxyPlayerSession;
 import org.jose4j.json.internal.json_simple.JSONObject;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectWriter;
@@ -21,8 +22,6 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayDeque;
 import java.util.Deque;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -34,7 +33,8 @@ public class SessionLogger implements AutoCloseable {
     private static final String PATTERN_FORMAT = "HH:mm:ss:SSS";
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern(PATTERN_FORMAT).withZone(ZoneId.systemDefault());
     private static final String LOG_FORMAT = "[%s] [%s] - %s";
-    private static final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
+
+    private final ProxyPlayerSession session;
 
     private final ProxyPass proxy;
     private final Path dataPath;
@@ -44,7 +44,8 @@ public class SessionLogger implements AutoCloseable {
 
     private ScheduledFuture<?> flushTask;
 
-    public SessionLogger(ProxyPass proxy, Path sessionsDir, String displayName, long timestamp) {
+    public SessionLogger(ProxyPlayerSession session, ProxyPass proxy, Path sessionsDir, String displayName, long timestamp) {
+        this.session = session;
         this.proxy = proxy;
         this.dataPath = sessionsDir.resolve(displayName + '-' + timestamp);
         this.logPath = dataPath.resolve("packets.log");
@@ -61,7 +62,7 @@ public class SessionLogger implements AutoCloseable {
                 }
             }
 
-            this.flushTask = executor.scheduleAtFixedRate(this::flushLogBuffer, 5, 5, TimeUnit.SECONDS);
+            this.flushTask = this.proxy.getLogExecutor().scheduleAtFixedRate(this::flushLogBuffer, 5, 5, TimeUnit.SECONDS);
         }
     }
 
@@ -153,7 +154,4 @@ public class SessionLogger implements AutoCloseable {
         }
     }
 
-    public static void shutdown() {
-        executor.shutdown();
-    }
 }

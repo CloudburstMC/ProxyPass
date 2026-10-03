@@ -22,6 +22,8 @@ log-packets: true
 ## Where to log packet data
 ## Valid options: console, file or both
 log-to: file
+## Should the client lie to the server about it's resource packs
+ignore-resource-packs: false
 
 ## Packets to ignore to make your log more refined. These default packet are generally spammed
 ignored-packets:
@@ -32,3 +34,13 @@ ignored-packets:
   - "NetworkChunkPublisherUpdatePacket"
   - "ClientCacheBlobStatusPacket"
   - "ClientCacheMissResponsePacket"
+## Packets to specifically block to and from the client, ensuring the server/client never receives these packets
+blocked-packets: []
+
+## Should ProxyPass use an authenticated account
+online-mode: true
+## Should ProxyPass save account login details
+save-auth-details: true
+## The default account name to use, if blank and multiple accounts are
+## saved, the user will be forced to choose
+default-account-name: ""

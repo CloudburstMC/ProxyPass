@@ -14,7 +14,7 @@
     </Appenders>
     <Loggers>
         <Logger name="org.cloudburstmc.netty.util.nethernet.IdentityUtils" level="INFO"/>
-        <Root level="DEBUG">
+        <Root level="INFO">
             <AppenderRef ref="Console"/>
             <AppenderRef ref="File"/>
         </Root>

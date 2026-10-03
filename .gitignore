@@ -223,6 +223,7 @@ gradle-app.setting
 
 # ProxyPass
 run/
+auth.json
 config.yml
 logs/
 logs/*
@@ -230,3 +231,4 @@ packet-logs/
 packet-logs/*
 data/
 sessions/
+cache/
