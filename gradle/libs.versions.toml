@@ -1,16 +1,31 @@
 [versions]
-protocol = "3.0.0.Beta13-20260916.122344-26"
-jackson = "3.2.2"
+protocol = "3.0.0.Beta13-20260917.001841-27"
+jackson = "3.2.3"
+network = "2.0.0.CR4-20261001.235918-13"
+libdatachannel = "0.24.6.0-20260930.214316-2"
+log4j = "2.26.1"
+slf4j = "2.0.20"
+junit = "6.1.3"
 
 [libraries]
+junit-jupiter-api = { group = "org.junit.jupiter", name = "junit-jupiter-api", version.ref = "junit" }
+junit-jupiter-engine = { group = "org.junit.jupiter", name = "junit-jupiter-engine", version.ref = "junit" }
+junit-platform-launcher = { group = "org.junit.platform", name = "junit-platform-launcher", version.ref = "junit" }
 bedrock-codec = { group = "org.cloudburstmc.protocol", name = "bedrock-codec", version.ref = "protocol" }
 bedrock-common = { group = "org.cloudburstmc.protocol", name = "common", version.ref = "protocol" }
 bedrock-connection = { group = "org.cloudburstmc.protocol", name = "bedrock-connection", version.ref = "protocol" }
-common = { group = "com.nukkitx", name = "common", version = "1.0.1-SNAPSHOT" }
+log4j-bom = { group = "org.apache.logging.log4j", name = "log4j-bom", version.ref = "log4j" }
+log4j-api = { group = "org.apache.logging.log4j", name = "log4j-api" }
+log4j-core = { group = "org.apache.logging.log4j", name = "log4j-core" }
+log4j-slf4j2-impl = { group = "org.apache.logging.log4j", name = "log4j-slf4j2-impl" }
+slf4j-api = { group = "org.slf4j", name = "slf4j-api", version.ref = "slf4j" }
+netty-transport-nethernet = { group = "org.cloudburstmc.netty", name = "netty-transport-nethernet", version.ref = "network" }
+netty-transport-raknet = { group = "org.cloudburstmc.netty", name = "netty-transport-raknet", version.ref = "network" }
+libdatachannel-natives = { group = "dev.opencollab", name = "libdatachannel-java-arch-detect", version.ref = "libdatachannel" }
 jackson-databind = { group = "tools.jackson.core", name = "jackson-databind", version.ref = "jackson" }
 jackson-dataformat-yaml = { group = "tools.jackson.dataformat", name = "jackson-dataformat-yaml", version.ref = "jackson" }
 jansi = { group = "org.fusesource.jansi", name = "jansi", version = "2.4.3" }
-jline-reader = { group = "org.jline", name = "jline-reader", version = "4.4.1" }
+jline-reader = { group = "org.jline", name = "jline-reader", version = "4.4.6" }
 lombok = { group = "org.projectlombok", name = "lombok", version = "1.18.48" }
 spotbugs-annotations = { group = "com.github.spotbugs", name = "spotbugs-annotations", version = "4.10.4" }
 

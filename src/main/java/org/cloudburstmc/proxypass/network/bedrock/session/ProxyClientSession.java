@@ -19,22 +19,30 @@ import org.cloudburstmc.proxypass.network.bedrock.util.TestUtils;
 public class ProxyClientSession extends BedrockClientSession implements ProxySession {
 
     private final ProxyPass proxyPass;
-    @Setter
-    private BedrockSession sendSession;
-    @Setter
-    private ProxyPlayerSession player;
 
-    private long playerId;
+    @Setter
+    private volatile BedrockSession sendSession;
+    @Setter
+    private volatile ProxyPlayerSession player;
 
     public ProxyClientSession(BedrockPeer peer, int subClientId, ProxyPass proxyPass) {
         super(peer, subClientId);
         this.proxyPass = proxyPass;
+        peer.getChannel().closeFuture().addListener(ignored -> {
+            ProxyPlayerSession connectedPlayer = this.player;
+            if (connectedPlayer != null) {
+                connectedPlayer.close();
+            }
+        });
     }
 
     @Override
     protected void onPacket(BedrockPacketWrapper wrapper) {
         BedrockPacket packet = wrapper.getPacket();
-        player.logger.logPacket(this, packet, false);
+        if (this.player != null) {
+            this.player.logger.logPacket(this, packet, false);
+        }
+
         if (proxyPass.getConfiguration().isPacketTesting()) {
             TestUtils.testPacket(this, wrapper);
         }

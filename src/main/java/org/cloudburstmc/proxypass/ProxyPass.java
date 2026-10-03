@@ -4,6 +4,7 @@ import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelFuture;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioDatagramChannel;
 import io.netty.util.ResourceLeakDetector;
@@ -11,19 +12,29 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.extern.log4j.Log4j2;
 import org.cloudburstmc.nbt.*;
+import org.cloudburstmc.netty.channel.nethernet.NetherNetChannelFactory;
+import org.cloudburstmc.netty.channel.nethernet.config.NetherChannelOption;
+import org.cloudburstmc.netty.channel.nethernet.signaling.NetherNetHTTPClientSignaling;
+import org.cloudburstmc.netty.channel.nethernet.signaling.NetherNetHTTPServerSignaling;
+import org.cloudburstmc.netty.channel.nethernet.signaling.PongData;
 import org.cloudburstmc.netty.channel.raknet.RakChannelFactory;
 import org.cloudburstmc.netty.channel.raknet.config.RakChannelOption;
-import org.cloudburstmc.protocol.bedrock.BedrockPeer;
+import org.cloudburstmc.netty.util.nethernet.OperatorIdentity;
+import org.cloudburstmc.netty.util.nethernet.TokenTrust;
 import org.cloudburstmc.protocol.bedrock.BedrockPong;
 import org.cloudburstmc.protocol.bedrock.codec.BedrockCodec;
 import org.cloudburstmc.protocol.bedrock.codec.v2193.Bedrock_v2193;
 import org.cloudburstmc.protocol.bedrock.data.definitions.BlockDefinition;
 import org.cloudburstmc.protocol.bedrock.netty.BedrockPacketWrapper;
-import org.cloudburstmc.protocol.bedrock.netty.initializer.BedrockChannelInitializer;
+import org.cloudburstmc.protocol.bedrock.util.ChainValidationResult;
+import org.cloudburstmc.protocol.bedrock.util.EncryptionUtils;
 import org.cloudburstmc.protocol.common.DefinitionRegistry;
+import org.cloudburstmc.proxypass.network.Transport;
+import org.cloudburstmc.proxypass.network.bedrock.ProxyChannelInitializer;
 import org.cloudburstmc.proxypass.network.bedrock.jackson.ColorDeserializer;
 import org.cloudburstmc.proxypass.network.bedrock.jackson.ColorSerializer;
 import org.cloudburstmc.proxypass.network.bedrock.jackson.NbtDefinitionSerializer;
+import org.cloudburstmc.proxypass.network.bedrock.logging.SessionLogger;
 import org.cloudburstmc.proxypass.network.bedrock.session.ProxyClientSession;
 import org.cloudburstmc.proxypass.network.bedrock.session.ProxyServerSession;
 import org.cloudburstmc.proxypass.network.bedrock.session.UpstreamPacketHandler;
@@ -47,14 +58,17 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.file.*;
+import java.security.KeyPair;
 import java.util.*;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
 @Log4j2
 @Getter
-public class ProxyPass {
+public class ProxyPass implements AutoCloseable {
     public static final ObjectMapper JSON_MAPPER;
     public static final YAMLMapper YAML_MAPPER;
 
@@ -71,7 +85,7 @@ public class ProxyPass {
     private static final BedrockPong ADVERTISEMENT = new BedrockPong()
             .edition("MCPE")
             .gameType("Survival")
-            .version(ProxyPass.MINECRAFT_VERSION)
+            .version(ProxyPass.CODEC.getMinecraftVersion())
             .protocolVersion(ProxyPass.PROTOCOL_VERSION)
             .motd("ProxyPass")
             .playerCount(0)
@@ -108,15 +122,16 @@ public class ProxyPass {
     }
 
     private final AtomicBoolean running = new AtomicBoolean(true);
+    private final AtomicBoolean closed = new AtomicBoolean();
 
     private final NioEventLoopGroup eventLoopGroup = new NioEventLoopGroup();
     private final Set<Channel> clients = ConcurrentHashMap.newKeySet();
     @Getter(AccessLevel.NONE)
     private final Set<Class<?>> ignoredPackets = Collections.newSetFromMap(new IdentityHashMap<>());
     private Channel server;
+    private final Set<Channel> connections = ConcurrentHashMap.newKeySet();
     private int maxClients = 0;
     private InetSocketAddress targetAddress;
-    private InetSocketAddress proxyAddress;
     private Configuration configuration;
     private Path baseDir;
     private Path sessionsDir;
@@ -127,7 +142,9 @@ public class ProxyPass {
     public static void main(String[] args) {
         ResourceLeakDetector.setLevel(ResourceLeakDetector.Level.DISABLED);
         ProxyPass proxy = new ProxyPass();
-        try {
+
+        try (proxy) {
+            Runtime.getRuntime().addShutdownHook(new Thread(proxy::shutdown, "ProxyPass shutdown"));
             proxy.boot();
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -137,13 +154,14 @@ public class ProxyPass {
     public void boot() throws IOException {
         log.info("Loading configuration...");
         Path configPath = Paths.get(".").resolve("config.yml");
+
         if (Files.notExists(configPath) || !Files.isRegularFile(configPath)) {
-            Files.copy(ProxyPass.class.getClassLoader().getResourceAsStream("config.yml"), configPath, StandardCopyOption.REPLACE_EXISTING);
+            try (InputStream input = Objects.requireNonNull(ProxyPass.class.getClassLoader().getResourceAsStream("config.yml"), "config.yml")) {
+                Files.copy(input, configPath, StandardCopyOption.REPLACE_EXISTING);
+            }
         }
 
         configuration = Configuration.load(configPath);
-
-        proxyAddress = configuration.getProxy().getAddress();
         targetAddress = configuration.getDestination().getAddress();
         maxClients = configuration.getMaxClients();
 
@@ -172,55 +190,115 @@ public class ProxyPass {
             log.warn("Failed to load block palette. Blocks will appear as runtime IDs in packet traces and creative_content.json!");
         }
 
-        log.info("Loading server...");
-        ADVERTISEMENT.ipv4Port(this.proxyAddress.getPort())
-                .ipv6Port(this.proxyAddress.getPort());
-        this.server = new ServerBootstrap()
-                .group(this.eventLoopGroup)
-                .channelFactory(RakChannelFactory.server(NioDatagramChannel.class))
-                .option(RakChannelOption.RAK_ADVERTISEMENT, ADVERTISEMENT.toByteBuf())
-                .childHandler(new BedrockChannelInitializer<ProxyServerSession>() {
-
-                    @Override
-                    protected ProxyServerSession createSession0(BedrockPeer peer, int subClientId) {
-                        return new ProxyServerSession(peer, subClientId, ProxyPass.this);
-                    }
-
-                    @Override
-                    protected void initSession(ProxyServerSession session) {
-                        session.setPacketHandler(new UpstreamPacketHandler(session, ProxyPass.this));
-                    }
-                })
-                .bind(this.proxyAddress)
-                .awaitUninterruptibly()
-                .channel();
-        log.info("Bedrock server {} ({}) started on {}", ProxyPass.CODEC.getMinecraftVersion(), ProxyPass.CODEC.getProtocolVersion(), proxyAddress);
+        this.bindListener(this.configuration.getProxy());
 
         loop();
     }
 
-    public void newClient(InetSocketAddress socketAddress, Consumer<ProxyClientSession> sessionConsumer) {
-        Channel channel = new Bootstrap()
-                .group(this.eventLoopGroup)
-                .channelFactory(RakChannelFactory.client(NioDatagramChannel.class))
-                .option(RakChannelOption.RAK_PROTOCOL_VERSION, ProxyPass.CODEC.getRaknetProtocolVersion())
-                .handler(new BedrockChannelInitializer<ProxyClientSession>() {
+    private void bindListener(Configuration.Address listener) throws IOException {
+        ServerBootstrap bootstrap = new ServerBootstrap().group(this.eventLoopGroup);
+        if (this.configuration.getTransport() == Transport.RAKNET) {
+            bootstrap.channelFactory(RakChannelFactory.server(NioDatagramChannel.class))
+                    .option(RakChannelOption.RAK_ADVERTISEMENT, ADVERTISEMENT.ipv4Port(listener.getPort())
+                            .ipv6Port(listener.getPort()).toByteBuf());
+        } else {
+            try {
+                Configuration.NetherNet settings = this.configuration.getNethernet();
+                OperatorIdentity identity = OperatorIdentity.fromPemOrCreate(
+                        this.baseDir.resolve(settings.getIdentityFile()).toFile(), "ProxyPass");
 
-                    @Override
-                    protected ProxyClientSession createSession0(BedrockPeer peer, int subClientId) {
-                        return new ProxyClientSession(peer, subClientId, ProxyPass.this);
-                    }
+                NetherNetHTTPServerSignaling.Builder signaling = new NetherNetHTTPServerSignaling.Builder()
+                        .setIdentity(identity)
+                        .setTokenTrust(settings.isVerifyClientAuthentication() ? TokenTrust.MINECRAFT_AUTH : TokenTrust.ANY)
+                        .setMotd(new PongData.Builder().setServerName("ProxyPass").setProtocol(PROTOCOL_VERSION)
+                                .setVersion(MINECRAFT_VERSION).setMaxPlayerCount(this.maxClients == 0 ? 20 : this.maxClients)
+                                .setOnlineAuth(settings.isVerifyClientAuthentication())
+                                .setSelfSignedAuth(!settings.isVerifyClientAuthentication()).build());
 
-                    @Override
-                    protected void initSession(ProxyClientSession session) {
-                        sessionConsumer.accept(session);
-                    }
-                })
-                .connect(socketAddress)
-                .awaitUninterruptibly()
-                .channel();
+                if (settings.getTlsCertificate() != null) {
+                    signaling.setHttpsPem(this.baseDir.resolve(settings.getTlsCertificate()).toFile(),
+                            this.baseDir.resolve(settings.getTlsPrivateKey()).toFile());
+                }
 
-        this.clients.add(channel);
+                bootstrap.channelFactory(NetherNetChannelFactory.server(signaling.build()))
+                        .option(NetherChannelOption.NETHER_SERVER_RTC_HANDSHAKE_TIMEOUT_SECONDS, 30);
+            } catch (Exception failure) {
+                throw new IOException("Unable to configure the NetherNet listener", failure);
+            }
+        }
+
+        bootstrap.childHandler(new ProxyChannelInitializer<>(this, this.configuration.getTransport(), true,
+                (peer, id) -> new ProxyServerSession(peer, id, this),
+                session -> session.setPacketHandler(new UpstreamPacketHandler(session, this))));
+        ChannelFuture bound = bootstrap.bind(listener.getAddress()).awaitUninterruptibly();
+        if (!bound.isSuccess()) {
+            bound.channel().close();
+            throw new IOException("Unable to bind " + listener.getAddress(), bound.cause());
+        }
+
+        this.server = bound.channel();
+        log.info("{} listener started on {}", this.configuration.getTransport(), listener.getAddress());
+    }
+
+    public CompletableFuture<ProxyClientSession> newClient(KeyPair keyPair, ChainValidationResult.IdentityData identity, Consumer<ProxyClientSession> sessionConsumer) {
+        CompletableFuture<ProxyClientSession> result = new CompletableFuture<>();
+        Configuration.Address destination = this.configuration.getDestination();
+        log.info("Connecting {} to backend {} using {}", identity.displayName, this.targetAddress, this.configuration.getTransport());
+
+        Bootstrap bootstrap = new Bootstrap().group(this.eventLoopGroup);
+        try {
+            if (this.configuration.getTransport() == Transport.RAKNET) {
+                bootstrap.channelFactory(RakChannelFactory.client(NioDatagramChannel.class))
+                        .option(RakChannelOption.RAK_PROTOCOL_VERSION, CODEC.getRaknetProtocolVersion());
+            } else {
+                OperatorIdentity assertion = new OperatorIdentity(keyPair.getPrivate(), keyPair.getPublic(), null, "ProxyPass")
+                        .forPlayer(identity.xuid, identity.displayName);
+                bootstrap.channelFactory(NetherNetChannelFactory.client(() -> new NetherNetHTTPClientSignaling(destination.signalingSettings())))
+                        .option(NetherChannelOption.NETHER_CLIENT_IDENTITY, assertion)
+                        .option(NetherChannelOption.NETHER_CLIENT_HANDSHAKE_TIMEOUT_MS, 30000);
+                if (destination.getServerPublicKey() != null) {
+                    bootstrap.option(NetherChannelOption.NETHER_CLIENT_SERVER_TRUST, TokenTrust.pinnedTo(EncryptionUtils.parseKey(destination.getServerPublicKey())));
+                }
+            }
+
+            bootstrap.handler(new ProxyChannelInitializer<>(this, this.configuration.getTransport(), false,
+                    (peer, id) -> new ProxyClientSession(peer, id, this), session -> {
+                sessionConsumer.accept(session);
+                result.complete(session);
+            }));
+
+            ChannelFuture connection = bootstrap.connect(this.targetAddress);
+            connection.addListener(future -> {
+                if (!future.isSuccess()) {
+                    connection.channel().close();
+                    result.completeExceptionally(future.cause());
+                }
+            });
+
+            connection.channel().closeFuture().addListener(ignored -> result.completeExceptionally(new IOException("Backend connection closed before login initialization")));
+        } catch (Exception failure) {
+            result.completeExceptionally(failure);
+        }
+
+        return result;
+    }
+
+    public synchronized boolean registerConnection(Channel channel, boolean incoming) {
+        if (!this.running.get() || incoming && this.isFull()) {
+            return false;
+        }
+
+        this.connections.add(channel);
+        if (incoming) {
+            this.clients.add(channel);
+        }
+
+        channel.closeFuture().addListener(ignored -> {
+            this.connections.remove(channel);
+            this.clients.remove(channel);
+        });
+
+        return true;
     }
 
     private void loop() {
@@ -230,14 +308,27 @@ public class ProxyPass {
                     this.wait();
                 }
             } catch (InterruptedException e) {
-                // ignore
+                Thread.currentThread().interrupt();
+                this.shutdown();
             }
+        }
+    }
 
+    @Override
+    public void close() {
+        this.shutdown();
+
+        if (!this.closed.compareAndSet(false, true)) {
+            return;
         }
 
-        // Shutdown
-        this.clients.forEach(Channel::disconnect);
-        this.server.disconnect();
+        if (this.server != null) {
+            this.server.close().awaitUninterruptibly();
+        }
+
+        List.copyOf(this.connections).forEach(channel -> channel.close().awaitUninterruptibly());
+        this.eventLoopGroup.shutdownGracefully().awaitUninterruptibly();
+        SessionLogger.shutdown();
     }
 
     public void shutdown() {

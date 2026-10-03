@@ -23,27 +23,26 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 
-
 @Log4j2
-public class SessionLogger {
+public class SessionLogger implements AutoCloseable {
 
     private static final String PATTERN_FORMAT = "HH:mm:ss:SSS";
-    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern(PATTERN_FORMAT)
-            .withZone(ZoneId.systemDefault());
+    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern(PATTERN_FORMAT).withZone(ZoneId.systemDefault());
     private static final String LOG_FORMAT = "[%s] [%s] - %s";
-
     private static final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
 
     private final ProxyPass proxy;
-
     private final Path dataPath;
-
     private final Path logPath;
-
     private final Deque<String> logBuffer = new ArrayDeque<>();
+    private final AtomicBoolean closed = new AtomicBoolean();
+
+    private ScheduledFuture<?> flushTask;
 
     public SessionLogger(ProxyPass proxy, Path sessionsDir, String displayName, long timestamp) {
         this.proxy = proxy;
@@ -54,14 +53,15 @@ public class SessionLogger {
     public void start() {
         if (proxy.getConfiguration().isLoggingPackets()) {
             if (proxy.getConfiguration().getLogTo().logToFile) {
-                log.debug("Packets will be logged under " + logPath.toString());
+                log.debug("Packets will be logged under {}", logPath.toString());
                 try {
                     Files.createDirectories(dataPath);
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
             }
-            executor.scheduleAtFixedRate(this::flushLogBuffer, 5, 5, TimeUnit.SECONDS);
+
+            this.flushTask = executor.scheduleAtFixedRate(this::flushLogBuffer, 5, 5, TimeUnit.SECONDS);
         }
     }
 
@@ -120,7 +120,9 @@ public class SessionLogger {
 
     private void logToBuffer(Supplier<String> supplier) {
         synchronized (logBuffer) {
-            logBuffer.addLast(supplier.get());
+            if (!this.closed.get()) {
+                logBuffer.addLast(supplier.get());
+            }
         }
     }
 
@@ -130,10 +132,28 @@ public class SessionLogger {
                 if (proxy.getConfiguration().getLogTo().logToFile) {
                     Files.write(logPath, logBuffer, StandardOpenOption.APPEND, StandardOpenOption.CREATE);
                 }
+
                 logBuffer.clear();
             } catch (IOException e) {
                 log.error("Unable to flush packet log", e);
             }
         }
+    }
+
+    @Override
+    public void close() {
+        if (this.closed.compareAndSet(false, true)) {
+            if (this.flushTask != null) {
+                this.flushTask.cancel(false);
+            }
+
+            if (this.proxy.getConfiguration().isLoggingPackets()) {
+                this.flushLogBuffer();
+            }
+        }
+    }
+
+    public static void shutdown() {
+        executor.shutdown();
     }
 }

@@ -20,13 +20,19 @@ public class ProxyServerSession extends BedrockServerSession implements ProxySes
 
     private final ProxyPass proxyPass;
     @Setter
-    private BedrockSession sendSession;
+    private volatile BedrockSession sendSession;
     @Setter
-    private ProxyPlayerSession player;
+    private volatile ProxyPlayerSession player;
 
     public ProxyServerSession(BedrockPeer peer, int subClientId, ProxyPass proxyPass) {
         super(peer, subClientId);
         this.proxyPass = proxyPass;
+        peer.getChannel().closeFuture().addListener(ignored -> {
+            ProxyPlayerSession connectedPlayer = this.player;
+            if (connectedPlayer != null) {
+                connectedPlayer.close();
+            }
+        });
     }
 
     @Override
