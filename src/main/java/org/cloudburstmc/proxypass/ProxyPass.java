@@ -270,8 +270,8 @@ public class ProxyPass implements AutoCloseable {
             ChannelFuture connection = bootstrap.connect(this.targetAddress);
             connection.addListener(future -> {
                 if (!future.isSuccess()) {
-                    connection.channel().close();
                     result.completeExceptionally(future.cause());
+                    connection.channel().close();
                 }
             });
 
