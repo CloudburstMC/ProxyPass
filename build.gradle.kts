@@ -28,25 +28,59 @@ dependencies {
     implementation(libs.bedrock.codec)
     implementation(libs.bedrock.common)
     implementation(libs.bedrock.connection)
+    implementation(libs.netty.transport.nethernet)
+    implementation(libs.netty.transport.raknet)
+    runtimeOnly(libs.libdatachannel.natives) {
+        exclude(group = "dev.opencollab", module = "libdatachannel-java")
+    }
     implementation(libs.jackson.databind)
     implementation(libs.jackson.dataformat.yaml)
-    implementation(libs.common)
+    implementation(platform(libs.log4j.bom))
+    implementation(libs.log4j.api)
+    implementation(libs.slf4j.api)
+    implementation(libs.log4j.core)
+    runtimeOnly(libs.log4j.slf4j2.impl)
     implementation(libs.jansi)
     implementation(libs.jline.reader)
     implementation(libs.flatlaf)
     implementation(libs.flatlaf.intellij)
     implementation(libs.minecraftauth)
     implementation(libs.zxing)
+
+    testImplementation(libs.junit.jupiter.api)
+    testRuntimeOnly(libs.junit.jupiter.engine)
+    testRuntimeOnly(libs.junit.platform.launcher)
+}
+
+tasks.test {
+    useJUnitPlatform()
+    systemProperty("cloudburst.validateEncryption", "true")
 }
 
 application {
     mainClass.set("org.cloudburstmc.proxypass.ProxyPass")
+    applicationDefaultJvmArgs = listOf("--enable-native-access=ALL-UNNAMED")
 }
 
 tasks.shadowJar {
     archiveClassifier.set("")
     archiveVersion.set("")
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    failOnDuplicateEntries = true
+
+    filesMatching(
+        listOf(
+            "META-INF/services/**",
+            "META-INF/org/apache/logging/log4j/core/config/plugins/Log4j2Plugins.dat"
+        )
+    ) {
+        duplicatesStrategy = DuplicatesStrategy.INCLUDE
+    }
+    manifest {
+        attributes["Enable-Native-Access"] = "ALL-UNNAMED"
+    }
     transform(Log4j2PluginsCacheFileTransformer())
+    mergeServiceFiles()
 }
 
 tasks.named<JavaExec>("run") {

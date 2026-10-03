@@ -135,7 +135,12 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
         this.session.getPeer().getCodecHelper().setBlockDefinitions(registry);
         player.getUpstream().getPeer().getCodecHelper().setBlockDefinitions(registry);
 
-        proxy.saveJson("block_properties.json", packet.getBlockProperties());
+        NbtMapBuilder blockProperties = NbtMap.builder();
+        for (BlockPropertyData property : packet.getBlockProperties()) {
+            blockProperties.putCompound(property.getName(), property.getProperties());
+        }
+        proxy.saveCompressedNBT("data_driven_blocks", blockProperties.build());
+
         return PacketSignal.UNHANDLED;
     }
 
@@ -145,6 +150,12 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
         voxelShapes.put("names", packet.getNameMap());
         voxelShapes.put("shapes", packet.getShapes());
         proxy.saveJson("voxel_shapes.json", voxelShapes);
+        return PacketSignal.UNHANDLED;
+    }
+
+    @Override
+    public PacketSignal handle(JigsawStructureDataPacket packet) {
+        proxy.saveCompressedNBT("jigsaw_structure_data", packet.getJigsawStructureDataTag());
         return PacketSignal.UNHANDLED;
     }
 

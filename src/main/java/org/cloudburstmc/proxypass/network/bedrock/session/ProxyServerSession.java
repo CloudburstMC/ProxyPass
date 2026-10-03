@@ -21,22 +21,28 @@ public class ProxyServerSession extends BedrockServerSession implements ProxySes
 
     private final ProxyPass proxyPass;
     @Setter
-    private BedrockSession sendSession;
+    private volatile BedrockSession sendSession;
     @Setter
-    private ProxyPlayerSession player;
-    @Setter
-    private Runnable onClose;
+    private volatile ProxyPlayerSession player;
 
     public ProxyServerSession(BedrockPeer peer, int subClientId, ProxyPass proxyPass) {
         super(peer, subClientId);
         this.proxyPass = proxyPass;
+        peer.getChannel().closeFuture().addListener(ignored -> {
+            ProxyPlayerSession connectedPlayer = this.player;
+            if (connectedPlayer != null) {
+                connectedPlayer.close();
+            }
+        });
     }
 
     @Override
     protected void onPacket(BedrockPacketWrapper wrapper) {
         BedrockPacket packet = wrapper.getPacket();
 
-        if (proxyPass.isBlockedPacket(packet.getClass())) return; // Just don't send it
+        if (proxyPass.isBlockedPacket(packet.getClass())) {
+            return;
+        }
 
         if (player != null) {
             player.logger.logPacket(this, packet, true);
@@ -50,8 +56,6 @@ public class ProxyServerSession extends BedrockServerSession implements ProxySes
         if (this.packetHandler == null) {
             log.warn("Received packet without a packet handler for {}:{}: {}", new Object[]{this.getSocketAddress(), this.subClientId, packet});
         } else if (this.packetHandler.handlePacket(packet) == PacketSignal.UNHANDLED && this.sendSession != null) {
-            // this.sendSession.sendPacket(ReferenceCountUtil.retain(packet));
-
             ByteBuf buffer = wrapper.getPacketBuffer()
                     .retainedSlice()
                     .skipBytes(wrapper.getHeaderLength());
@@ -63,8 +67,4 @@ public class ProxyServerSession extends BedrockServerSession implements ProxySes
         }
     }
 
-    @Override
-    public void disconnect(CharSequence reason, boolean hideReason) {
-        if (this.onClose != null) this.onClose.run();
-    }
 }

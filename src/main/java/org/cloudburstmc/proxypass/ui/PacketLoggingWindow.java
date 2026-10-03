@@ -7,6 +7,8 @@ import org.cloudburstmc.proxypass.ProxyPass;
 import org.cloudburstmc.proxypass.auth.Account;
 import org.cloudburstmc.proxypass.auth.AuthHandler;
 import org.cloudburstmc.proxypass.network.bedrock.util.LogTo;
+import org.cloudburstmc.proxypass.network.bedrock.session.ProxyPlayerSession;
+import org.cloudburstmc.protocol.bedrock.packet.BedrockPacket;
 import org.cloudburstmc.proxypass.ui.components.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,6 +28,11 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.Instant;
 import java.util.Set;
+import java.util.function.Consumer;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.io.InputStream;
+import java.util.Objects;
 
 public class PacketLoggingWindow extends JFrame {
     private static final Logger log = LoggerFactory.getLogger(PacketLoggingWindow.class);
@@ -64,7 +71,8 @@ public class PacketLoggingWindow extends JFrame {
             .setPrettyPrinting()
             .create();
     private final Configuration configuration;
-    private final ProxyPass proxyPass = new ProxyPass();
+    private volatile ProxyPass proxyPass;
+    private Consumer<ProxyPlayerSession> sessionInitHandler;
 
     public PacketLoggingWindow() throws IOException {
         this.setTitle("ProxyPass");
@@ -74,7 +82,11 @@ public class PacketLoggingWindow extends JFrame {
         this.addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
-                System.exit(0);
+                if (proxyPass == null) {
+                    System.exit(0);
+                } else {
+                    proxyPass.closeAsync().whenComplete((ignored, failure) -> System.exit(0));
+                }
             }
         });
 
@@ -87,30 +99,47 @@ public class PacketLoggingWindow extends JFrame {
         log.info("Loading configuration...");
         Path configPath = Paths.get(".").resolve("config.yml");
         if (Files.notExists(configPath) || !Files.isRegularFile(configPath)) {
-            Files.copy(ProxyPass.class.getClassLoader().getResourceAsStream("config.yml"), configPath, StandardCopyOption.REPLACE_EXISTING);
+            try (InputStream input = Objects.requireNonNull(ProxyPass.class.getClassLoader().getResourceAsStream("config.yml"), "config.yml")) {
+                Files.copy(input, configPath, StandardCopyOption.REPLACE_EXISTING);
+            }
         }
         configuration = Configuration.load(configPath);
 
         ConnectionHandler connectionHandler = new ConnectionHandler(configuration, (handler, proxyAddress, targetAddress, account) -> {
-            if (!proxyPass.getFullShutdown().get()) {
-                proxyPass.awaitShutdown().thenAccept(ignored -> {
-                    handler.onStop();
-                });
+            if (proxyPass != null && proxyPass.getRunning().get()) {
+                proxyPass.closeAsync().thenRun(() -> SwingUtilities.invokeLater(handler::onStop));
                 return;
             }
-            updateConfig(Configuration.Address.from(proxyAddress), Configuration.Address.from(targetAddress),
-                    null, null, null, null, null, null, null);
-
-            Account acc = AuthHandler.fromObject(account);
-            if (acc != null) {
+            CompletableFuture.runAsync(() -> {
                 try {
-                    acc.refresh();
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
+                    updateConfig(Configuration.Address.from(proxyAddress), Configuration.Address.from(targetAddress),
+                            null, null, null, null, null, null, null);
+                    Account acc = AuthHandler.fromObject(account);
+                    if (acc != null) {
+                        acc.refresh();
+                    }
+                    ProxyPass next = new ProxyPass();
+                    next.setSessionInitHandler(this.sessionInitHandler);
+                    this.proxyPass = next;
+                    try {
+                        next.start(configuration, acc);
+                    } catch (IOException | RuntimeException failure) {
+                        next.close();
+                        throw failure;
+                    }
+                } catch (Exception failure) {
+                    throw new CompletionException(failure);
                 }
-            }
-            proxyPass.boot(configuration, acc);
-            handler.onStart();
+            }).whenComplete((ignored, failure) -> SwingUtilities.invokeLater(() -> {
+                if (failure == null) {
+                    handler.onStart();
+                } else {
+                    handler.onStop();
+                    log.error("Unable to start the proxy", failure);
+                    JOptionPane.showMessageDialog(this, failure.getCause().getMessage(),
+                            "Unable to start proxy", JOptionPane.ERROR_MESSAGE);
+                }
+            }));
         });
 
         this.add(connectionHandler, BorderLayout.NORTH);
@@ -121,7 +150,7 @@ public class PacketLoggingWindow extends JFrame {
 
         this.add(pane, BorderLayout.CENTER);
 
-        proxyPass.setSessionInitHandler(session -> {
+        this.sessionInitHandler = session -> SwingUtilities.invokeLater(() -> {
             JPanel panel = new JPanel();
             panel.setLayout(new BorderLayout());
 
@@ -144,15 +173,13 @@ public class PacketLoggingWindow extends JFrame {
                     json = "Failed to JSONify! See console output for more details.";
                 }
 
-                packetList.newPacket(new UIPacketData(
-                        UIPacketData.freeIndex++,
-                        wrapper.getPacket(),
-                        wrapper.getPacketId(),
-                        Instant.now(),
-                        direction,
-                        bytes,
-                        json
-                ));
+                BedrockPacket packet = wrapper.getPacket();
+                int packetId = wrapper.getPacketId();
+                Instant timestamp = Instant.now();
+                String packetJson = json;
+                SwingUtilities.invokeLater(() -> packetList.newPacket(new UIPacketData(
+                        UIPacketData.freeIndex++, packet, packetId, timestamp, direction, bytes, packetJson)));
+
             });
 
             SouthBarComponent southBar = new SouthBarComponent(proxyPass, ProxyPass.CODEC, configuration, packetList::addFilter, (packsEnabled, blockPackets) -> {
@@ -176,10 +203,10 @@ public class PacketLoggingWindow extends JFrame {
 
             pane.addTab(titleName, panel);
 
-            session.setOnClose(() -> {
+            session.setOnClose(() -> SwingUtilities.invokeLater(() -> {
                 pane.setTitleAt(index, titleName + " (Disconnected)");
                 pane.setBackgroundAt(index, new Color(255, 0, 0, 64));
-            });
+            }));
         });
 
         this.pack();
@@ -208,7 +235,7 @@ public class PacketLoggingWindow extends JFrame {
         if (ignoredPackets != null) configuration.setIgnoredPackets(ignoredPackets);
         if (blockedPackets != null) configuration.setBlockedPackets(blockedPackets);
 
-        if (proxyPass.getRunning().get()) {
+        if (proxyPass != null && proxyPass.getRunning().get()) {
             proxyPass.resetConfig(configuration);
         }
     }

@@ -20,26 +20,35 @@ import org.cloudburstmc.proxypass.ui.UIPacketData;
 public class ProxyClientSession extends BedrockClientSession implements ProxySession {
 
     private final ProxyPass proxyPass;
-    @Setter
-    private BedrockSession sendSession;
-    @Setter
-    private ProxyPlayerSession player;
 
-    private long playerId;
+    @Setter
+    private volatile BedrockSession sendSession;
+    @Setter
+    private volatile ProxyPlayerSession player;
 
     public ProxyClientSession(BedrockPeer peer, int subClientId, ProxyPass proxyPass) {
         super(peer, subClientId);
         this.proxyPass = proxyPass;
+        peer.getChannel().closeFuture().addListener(ignored -> {
+            ProxyPlayerSession connectedPlayer = this.player;
+            if (connectedPlayer != null) {
+                connectedPlayer.close();
+            }
+        });
     }
 
     @Override
     protected void onPacket(BedrockPacketWrapper wrapper) {
         BedrockPacket packet = wrapper.getPacket();
+        if (proxyPass.isBlockedPacket(packet.getClass())) {
+            return;
+        }
 
-        if (proxyPass.isBlockedPacket(packet.getClass())) return; // Just don't send it
+        if (this.player != null) {
+            this.player.logger.logPacket(this, packet, false);
+            this.player.getExtraLogHandler().accept(wrapper, UIPacketData.Direction.S2C);
+        }
 
-        player.logger.logPacket(this, packet, false);
-        player.getExtraLogHandler().accept(wrapper, UIPacketData.Direction.S2C);
         if (proxyPass.getConfiguration().isPacketTesting()) {
             TestUtils.testPacket(this, wrapper);
         }
@@ -47,8 +56,6 @@ public class ProxyClientSession extends BedrockClientSession implements ProxySes
         if (this.packetHandler == null) {
             log.warn("Received packet without a packet handler for {}:{}: {}", new Object[]{this.getSocketAddress(), this.subClientId, packet});
         } else if (this.packetHandler.handlePacket(packet) == PacketSignal.UNHANDLED && this.sendSession != null) {
-            // this.sendSession.sendPacket(ReferenceCountUtil.retain(packet));
-
             ByteBuf buffer = wrapper.getPacketBuffer()
                     .retainedSlice()
                     .skipBytes(wrapper.getHeaderLength());
