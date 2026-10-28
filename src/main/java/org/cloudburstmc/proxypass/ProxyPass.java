@@ -23,7 +23,7 @@ import org.cloudburstmc.netty.util.nethernet.OperatorIdentity;
 import org.cloudburstmc.netty.util.nethernet.TokenTrust;
 import org.cloudburstmc.protocol.bedrock.BedrockPong;
 import org.cloudburstmc.protocol.bedrock.codec.BedrockCodec;
-import org.cloudburstmc.protocol.bedrock.codec.v2193.Bedrock_v2193;
+import org.cloudburstmc.protocol.bedrock.codec.v2225.Bedrock_v2225;
 import org.cloudburstmc.protocol.bedrock.data.definitions.BlockDefinition;
 import org.cloudburstmc.protocol.bedrock.netty.BedrockPacketWrapper;
 import org.cloudburstmc.protocol.bedrock.util.ChainValidationResult;
@@ -79,7 +79,7 @@ public class ProxyPass implements AutoCloseable {
 
     public static final String MINECRAFT_VERSION;
 
-    public static final BedrockCodec CODEC = Bedrock_v2193.CODEC;
+    public static final BedrockCodec CODEC = Bedrock_v2225.CODEC;
     public static final int PROTOCOL_VERSION = CODEC.getProtocolVersion();
 
     private static final BedrockPong ADVERTISEMENT = new BedrockPong()
