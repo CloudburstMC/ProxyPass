@@ -90,7 +90,7 @@ public class RecipeUtils {
                     itemMap.put(mapEntry.getValue(), mapEntry.getKey());
                 }
                 entry.input = itemMap;
-                entry.assumeSymetry = shapedRecipe.isAssumeSymetry();
+                entry.assumeSymmetry = shapedRecipe.isAssumeSymmetry();
             }
 
             if (recipe instanceof ShapelessRecipeData shapelessRecipe) {
@@ -269,7 +269,7 @@ public class RecipeUtils {
     @AllArgsConstructor
     @Getter
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    @JsonPropertyOrder({"id", "type", "input", "output", "shape", "block", "uuid", "priority", "assumeSymetry", "unlockContext"})
+    @JsonPropertyOrder({"id", "type", "input", "output", "shape", "block", "uuid", "priority", "assumeSymmetry", "unlockContext"})
     private static class CraftingDataEntry {
         private String id;
         private int type;
@@ -279,7 +279,7 @@ public class RecipeUtils {
         private String block;
         private UUID uuid;
         private Integer priority;
-        private Boolean assumeSymetry;
+        private Boolean assumeSymmetry;
         private String unlockContext;
     }
 
