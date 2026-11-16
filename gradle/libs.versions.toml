@@ -1,7 +1,7 @@
 [versions]
-protocol = "3.0.0.Beta15-20261111.115916-4"
+protocol = "3.0.0.Beta15-20261111.185530-5"
 jackson = "3.2.3"
-network = "2.0.0.CR6-20261105.090937-25"
+network = "2.0.0.CR6-20261115.174122-26"
 libdatachannel = "0.24.6.0-20261105.085043-11"
 log4j = "2.26.1"
 slf4j = "2.0.20"
@@ -25,9 +25,9 @@ libdatachannel-natives = { group = "dev.opencollab", name = "libdatachannel-java
 jackson-databind = { group = "tools.jackson.core", name = "jackson-databind", version.ref = "jackson" }
 jackson-dataformat-yaml = { group = "tools.jackson.dataformat", name = "jackson-dataformat-yaml", version.ref = "jackson" }
 jansi = { group = "org.fusesource.jansi", name = "jansi", version = "2.4.3" }
-jline-reader = { group = "org.jline", name = "jline-reader", version = "4.4.6" }
+jline-reader = { group = "org.jline", name = "jline-reader", version = "4.6.0" }
 lombok = { group = "org.projectlombok", name = "lombok", version = "1.18.48" }
-spotbugs-annotations = { group = "com.github.spotbugs", name = "spotbugs-annotations", version = "4.10.4" }
+spotbugs-annotations = { group = "com.github.spotbugs", name = "spotbugs-annotations", version = "4.10.5" }
 
 [plugins]
 shadow = { id = "com.gradleup.shadow", version = "9.6.1" }
