@@ -275,7 +275,8 @@ public class ProxyPass implements AutoCloseable {
         log.info("{} listener started on {}", this.configuration.getTransport(), listener.getAddress());
     }
 
-    public CompletableFuture<ProxyClientSession> newClient(KeyPair keyPair, ChainValidationResult.IdentityData identity, Consumer<ProxyClientSession> sessionConsumer) {
+    public CompletableFuture<ProxyClientSession> newClient(KeyPair keyPair, ChainValidationResult.IdentityData identity,
+                                                           @Nullable String identityToken, Consumer<ProxyClientSession> sessionConsumer) {
         CompletableFuture<ProxyClientSession> result = new CompletableFuture<>();
         Configuration.Address destination = this.configuration.getDestination();
         log.info("Connecting {} to backend {} using {}", identity.displayName, this.targetAddress, this.configuration.getTransport());
@@ -286,8 +287,11 @@ public class ProxyPass implements AutoCloseable {
                 bootstrap.channelFactory(RakChannelFactory.client(NioDatagramChannel.class))
                         .option(RakChannelOption.RAK_PROTOCOL_VERSION, CODEC.getRaknetProtocolVersion());
             } else {
-                OperatorIdentity assertion = new OperatorIdentity(keyPair.getPrivate(), keyPair.getPublic(), null, "ProxyPass")
-                        .forPlayer(identity.xuid, identity.displayName);
+                // A backend verifying client authentication only trusts tokens issued by Minecraft's auth service
+                OperatorIdentity assertion = identityToken != null
+                        ? OperatorIdentity.fromToken(keyPair, identityToken, "ProxyPass")
+                        : new OperatorIdentity(keyPair.getPrivate(), keyPair.getPublic(), null, "ProxyPass")
+                                .forPlayer(identity.xuid, identity.displayName);
                 bootstrap.channelFactory(NetherNetChannelFactory.client(() -> new NetherNetHTTPClientSignaling(destination.signalingSettings())))
                         .option(NetherChannelOption.NETHER_CLIENT_IDENTITY, assertion)
                         .option(NetherChannelOption.NETHER_CLIENT_HANDSHAKE_TIMEOUT_MS, 30000);

@@ -144,8 +144,6 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
                 this.authData = new AuthData(token.getDisplayName(), token.getUuid(), token.getXuid());
             }
 
-            initializeProxySession();
-
             if (!this.proxy.getConfiguration().getTransport().supportsPacketEncryption()) {
                 this.initializeProxySession();
             } else {
@@ -184,7 +182,10 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
         KeyPair keyPair = (account != null)
                     ? account.authManager().getSessionKeyPair()
                     : EncryptionUtils.createKeyPair();
-        this.proxy.newClient(keyPair, this.chain.identityClaims().extraData, downstream -> {
+        String identityToken = (account != null)
+                    ? account.authManager().getMinecraftMultiplayerToken().getCached().getToken()
+                    : null;
+        this.proxy.newClient(keyPair, this.chain.identityClaims().extraData, identityToken, downstream -> {
             if (!this.session.isConnected()) {
                 downstream.getPeer().getChannel().close();
                 return;

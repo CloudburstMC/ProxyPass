@@ -9,6 +9,7 @@ import org.cloudburstmc.protocol.bedrock.BedrockPeer;
 import org.cloudburstmc.protocol.bedrock.BedrockSession;
 import org.cloudburstmc.protocol.bedrock.netty.BedrockPacketWrapper;
 import org.cloudburstmc.protocol.bedrock.packet.BedrockPacket;
+import org.cloudburstmc.protocol.bedrock.packet.DisconnectPacket;
 import org.cloudburstmc.protocol.bedrock.packet.UnknownPacket;
 import org.cloudburstmc.protocol.common.PacketSignal;
 import org.cloudburstmc.proxypass.ProxyPass;
@@ -40,6 +41,19 @@ public class ProxyClientSession extends BedrockClientSession implements ProxySes
     @Override
     protected void onPacket(BedrockPacketWrapper wrapper) {
         BedrockPacket packet = wrapper.getPacket();
+        
+        if (packet instanceof DisconnectPacket disconnectPacket) {
+            if (this.player != null) {
+                this.player.getUpstream().sendPacketImmediately(disconnectPacket);
+                this.player.getOnClose().run();
+                this.player.close();
+            }
+            String message = "Player %s (%s) was disconnected with reason %s and kick message %s".formatted(this.player.getIdentityData().displayName, this.player.getIdentityData().xuid, disconnectPacket.getReason().name(), disconnectPacket.getKickMessage());
+            this.disconnect(message);
+            log.info(message);
+            this.player.logger.logPacket(this, packet, false);
+            return;
+        }
 
         if (proxyPass.isBlockedPacket(packet.getClass())) return; // Just don't send it
 
