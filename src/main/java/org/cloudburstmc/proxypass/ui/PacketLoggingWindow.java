@@ -92,10 +92,9 @@ public class PacketLoggingWindow extends JFrame {
         configuration = Configuration.load(configPath);
 
         ConnectionHandler connectionHandler = new ConnectionHandler(configuration, (handler, proxyAddress, targetAddress, account) -> {
-            if (!proxyPass.getFullShutdown().get()) {
-                proxyPass.awaitShutdown().thenAccept(ignored -> {
-                    handler.onStop();
-                });
+            if (proxyPass.getRunning().get()) {
+                proxyPass.shutdown();
+                handler.onStop();
                 return;
             }
             updateConfig(Configuration.Address.from(proxyAddress), Configuration.Address.from(targetAddress),
