@@ -6,6 +6,7 @@ import io.netty.buffer.ByteBufUtil;
 import lombok.experimental.UtilityClass;
 import lombok.extern.log4j.Log4j2;
 import org.cloudburstmc.protocol.bedrock.BedrockSession;
+import org.cloudburstmc.protocol.bedrock.codec.BedrockCodec;
 import org.cloudburstmc.protocol.bedrock.codec.BedrockCodecHelper;
 import org.cloudburstmc.protocol.bedrock.codec.PacketSerializeException;
 import org.cloudburstmc.protocol.bedrock.netty.BedrockPacketWrapper;

@@ -26,10 +26,10 @@ public class ColorDeserializer extends StdDeserializer<Color> {
                 String fieldName = jsonParser.currentName();
                 jsonParser.nextToken();
                 switch (fieldName) {
-                    case "a" -> alpha = jsonParser.getIntValue();
-                    case "r" -> red = jsonParser.getIntValue();
-                    case "g" -> green = jsonParser.getIntValue();
-                    case "b" -> blue = jsonParser.getIntValue();
+                    case "alpha" -> alpha = jsonParser.getIntValue();
+                    case "red" -> red = jsonParser.getIntValue();
+                    case "green" -> green = jsonParser.getIntValue();
+                    case "blue" -> blue = jsonParser.getIntValue();
                 }
             }
             return new Color(red, green, blue, alpha);

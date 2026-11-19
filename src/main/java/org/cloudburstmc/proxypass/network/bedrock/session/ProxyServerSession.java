@@ -13,6 +13,7 @@ import org.cloudburstmc.protocol.bedrock.packet.UnknownPacket;
 import org.cloudburstmc.protocol.common.PacketSignal;
 import org.cloudburstmc.proxypass.ProxyPass;
 import org.cloudburstmc.proxypass.network.bedrock.util.TestUtils;
+import org.cloudburstmc.proxypass.ui.UIPacketData;
 
 @Getter
 @Log4j2
@@ -23,6 +24,8 @@ public class ProxyServerSession extends BedrockServerSession implements ProxySes
     private volatile BedrockSession sendSession;
     @Setter
     private volatile ProxyPlayerSession player;
+    @Setter
+    private Runnable onClose;
 
     public ProxyServerSession(BedrockPeer peer, int subClientId, ProxyPass proxyPass) {
         super(peer, subClientId);
@@ -38,8 +41,12 @@ public class ProxyServerSession extends BedrockServerSession implements ProxySes
     @Override
     protected void onPacket(BedrockPacketWrapper wrapper) {
         BedrockPacket packet = wrapper.getPacket();
+
+        if (proxyPass.isBlockedPacket(packet.getClass())) return; // Just don't send it
+
         if (player != null) {
             player.logger.logPacket(this, packet, true);
+            player.getExtraLogHandler().accept(wrapper, UIPacketData.Direction.C2S);
         }
 
         if (proxyPass.getConfiguration().isPacketTesting()) {
@@ -60,5 +67,10 @@ public class ProxyServerSession extends BedrockServerSession implements ProxySes
             sendPacket.setPacketId(wrapper.getPacketId());
             this.sendSession.sendPacket(sendPacket);
         }
+    }
+
+    @Override
+    public void disconnect(CharSequence reason, boolean hideReason) {
+        if (this.onClose != null) this.onClose.run();
     }
 }
