@@ -3,15 +3,10 @@ import com.google.gson.*;
 import org.cloudburstmc.protocol.bedrock.codec.BedrockPacketDefinition;
 import org.cloudburstmc.proxypass.ProxyPass;
 import org.cloudburstmc.proxypass.ui.UIPacketData;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.swing.*;
 import javax.swing.table.AbstractTableModel;
-import javax.swing.tree.DefaultMutableTreeNode;
-import javax.swing.tree.DefaultTreeCellRenderer;
-import javax.swing.tree.TreeNode;
-import javax.swing.tree.TreePath;
+import javax.swing.tree.*;
 import java.awt.*;
 import java.util.*;
 import java.util.List;
@@ -96,6 +91,11 @@ public class PacketViewerComponent extends JTabbedPane {
                 area.setEditable(false);
                 this.add(area, BorderLayout.CENTER);
                 return;
+            }
+            
+            if (root instanceof JsonObject object) {
+                // We already know this, it's a useless property we don't need to keep
+                object.remove("packetType");
             }
 
             JTree tree = new JTree(new JsonTreeNode(null, null, root));

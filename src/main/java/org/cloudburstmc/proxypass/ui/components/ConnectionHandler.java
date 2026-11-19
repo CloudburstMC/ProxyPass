@@ -12,6 +12,16 @@ import net.raphimc.minecraftauth.msa.model.MsaDeviceCode;
 import net.raphimc.minecraftauth.msa.service.impl.DeviceCodeMsaAuthService;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.cloudburstmc.protocol.bedrock.codec.BedrockCodec;
+import org.cloudburstmc.protocol.bedrock.codec.v1001.Bedrock_v1001;
+import org.cloudburstmc.protocol.bedrock.codec.v2168.Bedrock_v2168;
+import org.cloudburstmc.protocol.bedrock.codec.v2168.Bedrock_v2168_hotfix4;
+import org.cloudburstmc.protocol.bedrock.codec.v2169.Bedrock_v2169;
+import org.cloudburstmc.protocol.bedrock.codec.v2193.Bedrock_v2193;
+import org.cloudburstmc.protocol.bedrock.codec.v2225.Bedrock_v2225;
+import org.cloudburstmc.protocol.bedrock.codec.v924.Bedrock_v924;
+import org.cloudburstmc.protocol.bedrock.codec.v944.Bedrock_v944;
+import org.cloudburstmc.protocol.bedrock.codec.v975.Bedrock_v975;
 import org.cloudburstmc.proxypass.Configuration;
 import org.cloudburstmc.proxypass.auth.Account;
 import org.cloudburstmc.proxypass.auth.AuthHandler;
@@ -145,19 +155,36 @@ public class ConnectionHandler extends JPanel {
         accountsPanel.add(addAccountButton, BorderLayout.EAST);
 
         this.add(accountsPanel, BorderLayout.WEST);
+        
+        JPanel center = new JPanel();
+        center.setLayout(new BorderLayout());
+        JComboBox<CodecEntry> codecDropdown = new JComboBox<>();
+        codecDropdown.addItem(new CodecEntry(Bedrock_v2225.CODEC));
+        codecDropdown.addItem(new CodecEntry(Bedrock_v2193.CODEC));
+        codecDropdown.addItem(new CodecEntry(Bedrock_v2169.CODEC));
+        codecDropdown.addItem(new CodecEntry(Bedrock_v2168_hotfix4.CODEC));
+        codecDropdown.addItem(new CodecEntry(Bedrock_v2168.CODEC));
+        codecDropdown.addItem(new CodecEntry(Bedrock_v1001.CODEC));
+        codecDropdown.addItem(new CodecEntry(Bedrock_v975.CODEC));
+        codecDropdown.addItem(new CodecEntry(Bedrock_v944.CODEC));
+        codecDropdown.addItem(new CodecEntry(Bedrock_v924.CODEC));
+        codecDropdown.setSelectedIndex(0);
+        center.add(codecDropdown, BorderLayout.WEST);
 
         JPanel addresses = new JPanel();
-        addresses.setLayout(new GridLayout(1, 2, 2, 2));
-        JAddressField proxy;
-        addresses.add(proxy = new JAddressField("Proxy Address: ", configuration.getProxy().getHost(), configuration.getProxy().getPort()));
-        JAddressField target;
-        addresses.add(target = new JAddressField("Target Address: ", configuration.getDestination().getHost(), configuration.getDestination().getPort()));
-        this.add(addresses, BorderLayout.CENTER);
+        addresses.setLayout(new GridLayout(1, 3, 2, 2));
+        JAddressField proxy = new JAddressField("Proxy Address: ", configuration.getProxy().getHost(), configuration.getProxy().getPort());
+        addresses.add(proxy);
+        JAddressField target = new JAddressField("Target Address: ", configuration.getDestination().getHost(), configuration.getDestination().getPort());
+        addresses.add(target);
+        center.add(addresses, BorderLayout.CENTER);
+        
+        this.add(center, BorderLayout.CENTER);
 
         startStop.addActionListener(e -> {
             startStop.setEnabled(false);
             try {
-                buttonHandler.handle(this, proxy.getAddress(), target.getAddress(), ((UIAccount) accountSelector.getSelectedItem()).getAccountObject());
+                buttonHandler.handle(this, ((CodecEntry) codecDropdown.getSelectedItem()).codec(), proxy.getAddress(), target.getAddress(), ((UIAccount) accountSelector.getSelectedItem()).getAccountObject());
             } catch (IOException ex) {
                 throw new RuntimeException(ex);
             }
@@ -179,7 +206,14 @@ public class ConnectionHandler extends JPanel {
 
     @FunctionalInterface
     public interface ButtonHandler {
-        void handle(ConnectionHandler handler, InetSocketAddress proxyAddress, InetSocketAddress targetAddress, JsonObject accountObject) throws IOException;
+        void handle(ConnectionHandler handler, BedrockCodec codec, InetSocketAddress proxyAddress, InetSocketAddress targetAddress, JsonObject accountObject) throws IOException;
+    }
+    
+    private record CodecEntry(BedrockCodec codec) {
+        @Override
+        public String toString() {
+            return codec.getMinecraftVersion() + " (v" + codec.getProtocolVersion() + ")";
+        }
     }
 
     private static class QRCodePanel extends JComponent {

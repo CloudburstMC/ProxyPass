@@ -6,8 +6,6 @@ import tools.jackson.core.JsonGenerator;
 import tools.jackson.databind.SerializationContext;
 import tools.jackson.databind.ser.std.StdSerializer;
 
-import java.awt.*;
-
 public class OptionalBooleanSerializer extends StdSerializer<OptionalBoolean> {
 
     public OptionalBooleanSerializer() {

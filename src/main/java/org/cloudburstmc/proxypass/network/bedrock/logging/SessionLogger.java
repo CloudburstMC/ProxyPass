@@ -35,7 +35,7 @@ public class SessionLogger implements AutoCloseable {
     private static final String PATTERN_FORMAT = "HH:mm:ss:SSS";
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern(PATTERN_FORMAT).withZone(ZoneId.systemDefault());
     private static final String LOG_FORMAT = "[%s] [%s] - %s";
-    private static final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
+    private static ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
 
     private final ProxyPlayerSession session;
 
@@ -55,6 +55,10 @@ public class SessionLogger implements AutoCloseable {
     }
 
     public void start() {
+        if (executor.isShutdown()) {
+            // Can be recalled due to the UI existing
+            executor = Executors.newSingleThreadScheduledExecutor();
+        }
         if (proxy.getConfiguration().isLoggingPackets()) {
             if (proxy.getConfiguration().getLogTo().logToFile) {
                 log.debug("Packets will be logged under {}", logPath.toString());

@@ -2,6 +2,7 @@ package org.cloudburstmc.proxypass.ui;
 
 import com.google.gson.*;
 import io.netty.buffer.ByteBuf;
+import org.cloudburstmc.protocol.bedrock.packet.ResourcePacksInfoPacket;
 import org.cloudburstmc.proxypass.Configuration;
 import org.cloudburstmc.proxypass.ProxyPass;
 import org.cloudburstmc.proxypass.auth.Account;
@@ -19,7 +20,6 @@ import java.awt.event.ComponentEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.IOException;
-import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -91,12 +91,13 @@ public class PacketLoggingWindow extends JFrame {
         }
         configuration = Configuration.load(configPath);
 
-        ConnectionHandler connectionHandler = new ConnectionHandler(configuration, (handler, proxyAddress, targetAddress, account) -> {
+        ConnectionHandler connectionHandler = new ConnectionHandler(configuration, (handler, codec, proxyAddress, targetAddress, account) -> {
             if (proxyPass.getRunning().get()) {
-                proxyPass.shutdown();
+                proxyPass.close();
                 handler.onStop();
                 return;
             }
+            ProxyPass.setNewCodec(codec);
             updateConfig(Configuration.Address.from(proxyAddress), Configuration.Address.from(targetAddress),
                     null, null, null, null, null, null, null);
 
@@ -180,9 +181,53 @@ public class PacketLoggingWindow extends JFrame {
                 pane.setBackgroundAt(index, new Color(255, 0, 0, 64));
             });
         });
+        
+        JPanel panel = new JPanel();
+        panel.setLayout(new BorderLayout());
+
+        PacketViewerComponent packetViewer = new PacketViewerComponent();
+
+        JScrollPane scrollablePacketList = new JScrollPane();
+        scrollablePacketList.setAutoscrolls(true);
+        PacketListComponent packetList = new PacketListComponent(packetViewer::setCurrentPacket);
+        scrollablePacketList.setViewportView(packetList);
+            
+        packetList.newPacket(new UIPacketData(
+            UIPacketData.freeIndex++,
+            new ResourcePacksInfoPacket(),
+            0, Instant.now(),
+            UIPacketData.Direction.S2C,
+            new byte[] {0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
+            ProxyPass.JSON_MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(new ResourcePacksInfoPacket())
+        ));
+
+        SouthBarComponent southBar = new SouthBarComponent(proxyPass, ProxyPass.CODEC, configuration, packetList::addFilter, (packsEnabled, blockPackets) -> {
+            this.updateConfig(
+                    null, null, null, null,
+                    null, null, packsEnabled, null, blockPackets
+            );
+        });
+
+        JPanel center = new JPanel();
+        center.setLayout(new GridLayout(1, 0, 5, 5));
+        center.add(scrollablePacketList);
+        center.add(packetViewer);
+        panel.add(center, BorderLayout.CENTER);
+        panel.add(southBar, BorderLayout.SOUTH);
+
+        int index = pane.getTabCount();
+
+        pane.addTab("Test Tab", panel);
+        pane.setBackgroundAt(index, new Color(0, 0, 128, 64));
 
         this.pack();
         this.setLocationRelativeTo(null);
+        
+        // Pack the test tab and remove if we don't actually want it, gives a good window size for free (very hacky I know)
+        if (!Boolean.getBoolean("ProxyPass.TestTab")) {
+            pane.remove(index);
+        }
+        
         this.setVisible(true);
     }
 

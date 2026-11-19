@@ -40,13 +40,7 @@ import org.cloudburstmc.proxypass.network.bedrock.jackson.*;
 import org.cloudburstmc.proxypass.network.bedrock.session.*;
 import org.cloudburstmc.proxypass.network.Transport;
 import org.cloudburstmc.proxypass.network.bedrock.ProxyChannelInitializer;
-import org.cloudburstmc.proxypass.network.bedrock.jackson.ColorDeserializer;
-import org.cloudburstmc.proxypass.network.bedrock.jackson.ColorSerializer;
-import org.cloudburstmc.proxypass.network.bedrock.jackson.NbtDefinitionSerializer;
 import org.cloudburstmc.proxypass.network.bedrock.logging.SessionLogger;
-import org.cloudburstmc.proxypass.network.bedrock.session.ProxyClientSession;
-import org.cloudburstmc.proxypass.network.bedrock.session.ProxyServerSession;
-import org.cloudburstmc.proxypass.network.bedrock.session.UpstreamPacketHandler;
 import org.cloudburstmc.proxypass.network.bedrock.util.NbtBlockDefinitionRegistry;
 import org.cloudburstmc.proxypass.network.bedrock.util.NbtBlockDefinitionRegistry.NbtBlockDefinition;
 import org.cloudburstmc.proxypass.network.bedrock.util.UnknownBlockDefinitionRegistry;
@@ -67,6 +61,7 @@ import java.awt.*;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.lang.reflect.Field;
 import java.net.InetSocketAddress;
 import java.nio.file.*;
 import java.security.KeyPair;
@@ -93,18 +88,43 @@ public class ProxyPass implements AutoCloseable {
 
     public static final String MINECRAFT_VERSION;
 
-    public static final BedrockCodec BASE_CODEC = Bedrock_v2225.CODEC;
+    public static BedrockCodec BASE_CODEC;
+    
+    static {
+        BedrockCodec selectedCodec;
+        BedrockCodec def = Bedrock_v2225.CODEC;
+        String codecVersion = System.getProperty("ProxyPass.CodecVersion");
+        if (codecVersion == null) {
+            selectedCodec = def;
+        } else {
+            try {
+                String path = "v" + codecVersion;
+                if (codecVersion.equals("2168_hotfix4")) {
+                    path = "v2168";
+                }
+                Class<?> codecClass = Class.forName("org.cloudburstmc.protocol.bedrock.codec." + path + ".Bedrock_v" + codecVersion);
 
-    public static final BedrockCodec CODEC = BASE_CODEC.toBuilder()
+                Field codecField = codecClass.getField("CODEC");
+                codecField.setAccessible(true);
+                selectedCodec = (BedrockCodec) codecField.get(null);
+            } catch (ClassNotFoundException | NoSuchFieldException | IllegalAccessException e) {
+                log.warn("Unable to find Codec specified in `-DProxyPass.CodecVersion`, using default. (%s v%s)".formatted(def.getMinecraftVersion(), def.getProtocolVersion()), e);
+                selectedCodec = def;
+            }
+        }
+        BASE_CODEC = selectedCodec;
+    }
+
+    public static BedrockCodec CODEC = BASE_CODEC.toBuilder()
             .helper(() -> {
                 BedrockCodecHelper helper = BASE_CODEC.createHelper();
                 helper.setEncodingSettings(EncodingSettings.UNLIMITED);
                 return helper;
             }).build();
             
-    public static final int PROTOCOL_VERSION = CODEC.getProtocolVersion();
+    public static int PROTOCOL_VERSION = CODEC.getProtocolVersion();
 
-    private static final BedrockPong ADVERTISEMENT = new BedrockPong()
+    private static BedrockPong ADVERTISEMENT = new BedrockPong()
             .edition("MCPE")
             .gameType("Survival")
             .version(ProxyPass.CODEC.getMinecraftVersion())
@@ -118,6 +138,31 @@ public class ProxyPass implements AutoCloseable {
     private static final DefaultPrettyPrinter PRETTY_PRINTER;
 
     public static Map<Integer, String> legacyIdMap = new HashMap<>();
+    
+    public static void setNewCodec(BedrockCodec codec) {
+        if (codec.getMinecraftVersion().equals(CODEC.getMinecraftVersion()) && codec.getProtocolVersion() == PROTOCOL_VERSION) return;
+        
+        log.info("Setting codec to {} (v{})", codec.getMinecraftVersion(), codec.getProtocolVersion());
+        
+        BASE_CODEC = codec;
+        CODEC = BASE_CODEC.toBuilder()
+            .helper(() -> {
+                BedrockCodecHelper helper = BASE_CODEC.createHelper();
+                helper.setEncodingSettings(EncodingSettings.UNLIMITED);
+                return helper;
+            }).build();
+        PROTOCOL_VERSION = CODEC.getProtocolVersion();
+        ADVERTISEMENT = new BedrockPong()
+            .edition("MCPE")
+            .gameType("Survival")
+            .version(ProxyPass.CODEC.getMinecraftVersion())
+            .protocolVersion(ProxyPass.PROTOCOL_VERSION)
+            .motd("ProxyPass")
+            .playerCount(0)
+            .maximumPlayerCount(20)
+            .subMotd("https://github.com/CloudburstMC/ProxyPass")
+            .nintendoLimited(false);
+    }
 
     static {
         DefaultIndenter indenter = new DefaultIndenter("    ", "\n");
@@ -143,10 +188,10 @@ public class ProxyPass implements AutoCloseable {
         MINECRAFT_VERSION = CODEC.getMinecraftVersion();
     }
 
-    private final AtomicBoolean running = new AtomicBoolean(true);
+    private final AtomicBoolean running = new AtomicBoolean(false);
     private final AtomicBoolean closed = new AtomicBoolean();
 
-    private final NioEventLoopGroup eventLoopGroup = new NioEventLoopGroup();
+    private NioEventLoopGroup eventLoopGroup = new NioEventLoopGroup();
     private final Set<Channel> clients = ConcurrentHashMap.newKeySet();
     private Channel server;
     private final Set<Channel> connections = ConcurrentHashMap.newKeySet();
@@ -197,6 +242,10 @@ public class ProxyPass implements AutoCloseable {
     }
 
     public void boot(Configuration configuration, @Nullable Account currentAccount) throws IOException {
+        if (this.eventLoopGroup.isTerminated() || this.eventLoopGroup.isShuttingDown() || this.eventLoopGroup.isShutdown()) {
+            this.eventLoopGroup = new NioEventLoopGroup();
+        }
+        
         this.configuration = configuration;
         this.currentAccount = currentAccount;
         if (this.currentAccount != null) {

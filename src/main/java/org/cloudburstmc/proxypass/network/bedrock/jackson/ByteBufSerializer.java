@@ -6,8 +6,6 @@ import tools.jackson.core.JsonGenerator;
 import tools.jackson.databind.SerializationContext;
 import tools.jackson.databind.ser.std.StdSerializer;
 
-import java.awt.*;
-
 public class ByteBufSerializer extends StdSerializer<ByteBuf> {
 
     public ByteBufSerializer() {
@@ -21,6 +19,7 @@ public class ByteBufSerializer extends StdSerializer<ByteBuf> {
         } else {
             gen.writeStartArray();
             int readerIndex = value.readerIndex();
+            value.readerIndex(0); // Writes the entire ByteBuf
             while (value.isReadable()) {
                 gen.writeNumber(value.readByte());
             }
