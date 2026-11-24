@@ -28,12 +28,6 @@ public class ProxyClientSession extends BedrockClientSession implements ProxySes
     public ProxyClientSession(BedrockPeer peer, int subClientId, ProxyPass proxyPass) {
         super(peer, subClientId);
         this.proxyPass = proxyPass;
-        peer.getChannel().closeFuture().addListener(ignored -> {
-            ProxyPlayerSession connectedPlayer = this.player;
-            if (connectedPlayer != null) {
-                connectedPlayer.close();
-            }
-        });
     }
 
     @Override
