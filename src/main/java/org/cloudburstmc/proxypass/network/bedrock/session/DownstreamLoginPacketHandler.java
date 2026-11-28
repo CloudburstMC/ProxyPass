@@ -89,8 +89,6 @@ public class DownstreamLoginPacketHandler implements BedrockPacketHandler {
 
     @Override
     public void onDisconnect(CharSequence reason) {
-        if (this.session.getSendSession() != null && this.session.getSendSession().isConnected()) {
-            this.session.getSendSession().disconnect(reason);
-        }
+        this.player.disconnect(this.session, reason, false);
     }
 }

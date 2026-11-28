@@ -218,9 +218,8 @@ public class DownstreamPacketHandler implements BedrockPacketHandler {
 
     @Override
     public PacketSignal handle(DisconnectPacket packet) {
-        this.session.disconnect();
-        // Let the client see the reason too.
-        return PacketSignal.UNHANDLED;
+        this.player.disconnect(this.session, packet.getKickMessage(), packet.isMessageSkipped());
+        return PacketSignal.HANDLED;
     }
 
     private void dumpCreativeItems(List<CreativeItemGroup> groups, List<CreativeItemData> contents) {

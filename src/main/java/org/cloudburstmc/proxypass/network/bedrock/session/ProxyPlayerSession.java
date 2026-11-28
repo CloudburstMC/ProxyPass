@@ -3,7 +3,7 @@ package org.cloudburstmc.proxypass.network.bedrock.session;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
-import lombok.extern.log4j.Log4j2;
+import org.cloudburstmc.protocol.bedrock.BedrockSession;
 import org.cloudburstmc.protocol.bedrock.netty.BedrockPacketWrapper;
 import org.cloudburstmc.protocol.bedrock.packet.BedrockPacket;
 import org.cloudburstmc.protocol.bedrock.util.ChainValidationResult;
@@ -16,7 +16,6 @@ import java.security.KeyPair;
 import java.util.function.BiConsumer;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-@Log4j2
 @Getter
 public class ProxyPlayerSession {
 
@@ -54,7 +53,6 @@ public class ProxyPlayerSession {
 //                this.downstream.disconnect();
 //            }
 //        });
-        this.upstream.setOnClose(() -> this.onClose.run());
         this.logger = new SessionLogger(
                 this,
                 proxy,
@@ -66,11 +64,25 @@ public class ProxyPlayerSession {
         logger.start();
     }
 
-    public void close() {
-        if (this.closed.compareAndSet(false, true)) {
-            this.upstream.getPeer().getChannel().close();
-            this.downstream.getPeer().getChannel().close();
-            this.logger.close();
+    @SuppressWarnings("resource")
+    public void disconnect(BedrockSession source, CharSequence reason, boolean hideReason) {
+        if (source != this.upstream && source != this.downstream) {
+            throw new IllegalArgumentException("Session does not belong to this player");
         }
+
+        if (!this.closed.compareAndSet(false, true)) {
+            return;
+        }
+
+        BedrockSession target = source == this.upstream ? this.downstream : this.upstream;
+        String disconnectReason = reason == null ? null : reason.toString();
+        target.getPeer().getChannel().eventLoop().execute(() -> {
+            if (target.isConnected() && target.getPeer().getChannel().isActive()) {
+                target.disconnect(disconnectReason, hideReason);
+            }
+        });
+        source.getPeer().getChannel().close();
+        this.logger.close();
+        this.onClose.run();
     }
 }

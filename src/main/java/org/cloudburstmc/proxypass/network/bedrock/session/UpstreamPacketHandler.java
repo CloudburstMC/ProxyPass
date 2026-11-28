@@ -278,8 +278,8 @@ public class UpstreamPacketHandler implements BedrockPacketHandler {
 
     @Override
     public void onDisconnect(CharSequence reason) {
-        if (this.session.getSendSession() != null && this.session.getSendSession().isConnected()) {
-            this.session.getSendSession().disconnect(reason);
+        if (this.player != null) {
+            this.player.disconnect(this.session, reason, false);
         }
     }
 

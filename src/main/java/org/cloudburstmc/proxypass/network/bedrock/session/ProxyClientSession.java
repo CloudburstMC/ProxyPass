@@ -30,28 +30,17 @@ public class ProxyClientSession extends BedrockClientSession implements ProxySes
     public ProxyClientSession(BedrockPeer peer, int subClientId, ProxyPass proxyPass) {
         super(peer, subClientId);
         this.proxyPass = proxyPass;
-        peer.getChannel().closeFuture().addListener(ignored -> {
-            ProxyPlayerSession connectedPlayer = this.player;
-            if (connectedPlayer != null) {
-                connectedPlayer.close();
-            }
-        });
     }
 
     @Override
     protected void onPacket(BedrockPacketWrapper wrapper) {
         BedrockPacket packet = wrapper.getPacket();
         
-        if (packet instanceof DisconnectPacket disconnectPacket) {
-            if (this.player != null) {
-                this.player.getUpstream().sendPacketImmediately(disconnectPacket);
-                this.player.getOnClose().run();
-                this.player.close();
-            }
+        if (packet instanceof DisconnectPacket disconnectPacket && this.player != null) {
             String message = "Player %s (%s) was disconnected with reason %s and kick message %s".formatted(this.player.getIdentityData().displayName, this.player.getIdentityData().xuid, disconnectPacket.getReason().name(), disconnectPacket.getKickMessage());
-            this.disconnect(message);
             log.info(message);
             this.player.logger.logPacket(this, packet, false);
+            this.player.disconnect(this, disconnectPacket.getKickMessage(), disconnectPacket.isMessageSkipped());
             return;
         }
 

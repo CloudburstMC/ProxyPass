@@ -24,18 +24,10 @@ public class ProxyServerSession extends BedrockServerSession implements ProxySes
     private volatile BedrockSession sendSession;
     @Setter
     private volatile ProxyPlayerSession player;
-    @Setter
-    private Runnable onClose;
 
     public ProxyServerSession(BedrockPeer peer, int subClientId, ProxyPass proxyPass) {
         super(peer, subClientId);
         this.proxyPass = proxyPass;
-        peer.getChannel().closeFuture().addListener(ignored -> {
-            ProxyPlayerSession connectedPlayer = this.player;
-            if (connectedPlayer != null) {
-                connectedPlayer.close();
-            }
-        });
     }
 
     @Override
@@ -67,10 +59,5 @@ public class ProxyServerSession extends BedrockServerSession implements ProxySes
             sendPacket.setPacketId(wrapper.getPacketId());
             this.sendSession.sendPacket(sendPacket);
         }
-    }
-
-    @Override
-    public void disconnect(CharSequence reason, boolean hideReason) {
-        if (this.onClose != null) this.onClose.run();
     }
 }
