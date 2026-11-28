@@ -10,7 +10,6 @@ import org.cloudburstmc.proxypass.ui.components.swing.JLabelledNumberSpinner;
 
 import javax.swing.*;
 import java.awt.*;
-import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Predicate;

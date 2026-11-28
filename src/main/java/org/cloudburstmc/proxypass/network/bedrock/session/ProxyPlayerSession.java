@@ -13,8 +13,8 @@ import org.cloudburstmc.proxypass.network.bedrock.logging.SessionLogger;
 import org.cloudburstmc.proxypass.ui.UIPacketData;
 
 import java.security.KeyPair;
-import java.util.function.BiConsumer;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BiConsumer;
 
 @Getter
 public class ProxyPlayerSession {

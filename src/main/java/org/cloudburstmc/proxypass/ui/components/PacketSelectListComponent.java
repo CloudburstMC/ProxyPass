@@ -14,7 +14,10 @@ import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.lang.reflect.Field;
-import java.util.*;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
 public class PacketSelectListComponent extends JPanel {
     private final DefaultListModel<Item> fullModel = new DefaultListModel<>();

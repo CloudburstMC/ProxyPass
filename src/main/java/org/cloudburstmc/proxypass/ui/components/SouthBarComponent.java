@@ -13,7 +13,6 @@ import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
-import java.util.function.Supplier;
 
 public class SouthBarComponent extends JTabbedPane {
     private final List<Tab> tabs = new ArrayList<>();

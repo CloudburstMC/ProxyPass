@@ -3,16 +3,11 @@ package org.cloudburstmc.proxypass.ui.components;
 import org.cloudburstmc.protocol.bedrock.codec.BedrockCodec;
 import org.cloudburstmc.protocol.bedrock.packet.BedrockPacket;
 import org.cloudburstmc.proxypass.Configuration;
-import org.cloudburstmc.proxypass.ProxyPass;
-import org.cloudburstmc.proxypass.ui.UIPacketData;
 
 import javax.swing.*;
 import java.awt.*;
-import java.util.List;
 import java.util.Set;
 import java.util.function.BiConsumer;
-import java.util.function.Consumer;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 public class BlockComponent extends JPanel {

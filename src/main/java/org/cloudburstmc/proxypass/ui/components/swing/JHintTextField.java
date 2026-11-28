@@ -2,8 +2,6 @@ package org.cloudburstmc.proxypass.ui.components.swing;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.FocusAdapter;
-import java.awt.event.FocusEvent;
 import java.util.Map;
 
 public class JHintTextField extends JTextField {

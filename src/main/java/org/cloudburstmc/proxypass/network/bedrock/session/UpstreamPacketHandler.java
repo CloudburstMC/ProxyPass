@@ -27,8 +27,8 @@ import org.jose4j.jws.JsonWebSignature;
 import org.jose4j.lang.JoseException;
 import tools.jackson.databind.JsonNode;
 
-import java.nio.charset.StandardCharsets;
 import javax.crypto.SecretKey;
+import java.nio.charset.StandardCharsets;
 import java.security.KeyPair;
 import java.security.PublicKey;
 import java.security.interfaces.ECPublicKey;

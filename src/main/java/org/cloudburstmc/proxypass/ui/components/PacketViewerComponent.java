@@ -1,4 +1,5 @@
 package org.cloudburstmc.proxypass.ui.components;
+
 import com.google.gson.*;
 import org.cloudburstmc.protocol.bedrock.codec.BedrockPacketDefinition;
 import org.cloudburstmc.proxypass.ProxyPass;
@@ -6,7 +7,10 @@ import org.cloudburstmc.proxypass.ui.UIPacketData;
 
 import javax.swing.*;
 import javax.swing.table.AbstractTableModel;
-import javax.swing.tree.*;
+import javax.swing.tree.DefaultMutableTreeNode;
+import javax.swing.tree.DefaultTreeCellRenderer;
+import javax.swing.tree.TreeNode;
+import javax.swing.tree.TreePath;
 import java.awt.*;
 import java.util.*;
 import java.util.List;
