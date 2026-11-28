@@ -2,8 +2,10 @@ package org.cloudburstmc.proxypass;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
+import lombok.Setter;
 import lombok.ToString;
 import org.cloudburstmc.netty.channel.nethernet.signaling.HttpSignalingSettings;
+import org.cloudburstmc.proxypass.network.ChainOnlyTrust;
 import org.cloudburstmc.proxypass.network.Transport;
 import org.cloudburstmc.proxypass.network.bedrock.util.LogTo;
 
@@ -20,6 +22,7 @@ import java.util.Locale;
 import java.util.Set;
 
 @Getter
+@Setter
 @ToString
 public class Configuration {
 
@@ -40,9 +43,20 @@ public class Configuration {
     private int maxClients = 0;
     @JsonProperty("log-to")
     private LogTo logTo = LogTo.FILE;
+    @JsonProperty("ignore-resource-packs")
+    private boolean ignoreResourcePacks = false;
 
     @JsonProperty("ignored-packets")
     private Set<String> ignoredPackets = Collections.emptySet();
+    @JsonProperty("blocked-packets")
+    private Set<String> blockedPackets = Collections.emptySet();
+
+    @JsonProperty("online-mode")
+    private boolean onlineMode = true;
+    @JsonProperty("save-auth-details")
+    private boolean saveAuthDetails = true;
+    @JsonProperty("default-account-name")
+    private String defaultAccountName = "";
 
     public static Configuration load(Path path) throws IOException {
         try (BufferedReader reader = Files.newBufferedReader(path)) {
@@ -67,6 +81,7 @@ public class Configuration {
     @Getter
     @ToString
     public static class Address {
+
         @JsonProperty("host")
         private String host;
         @JsonProperty("port")
@@ -80,14 +95,23 @@ public class Configuration {
             return new InetSocketAddress(host, port);
         }
 
+        public static Address from(InetSocketAddress address) {
+            Address a = new Address();
+            a.host = address.getHostName();
+            a.port = address.getPort();
+            return a;
+        }
+
         public HttpSignalingSettings signalingSettings() {
-            return HttpSignalingSettings.DEFAULT.withScheme(
-                    HttpSignalingSettings.Scheme.valueOf(this.signalingScheme.toUpperCase(Locale.ROOT)));
+            return HttpSignalingSettings.DEFAULT
+                    .withSslContext(ChainOnlyTrust.CONTEXT)
+                    .withScheme(HttpSignalingSettings.Scheme.valueOf(this.signalingScheme.toUpperCase(Locale.ROOT)));
         }
     }
 
     @Getter
     public static class NetherNet {
+
         @JsonProperty("identity-file")
         private String identityFile = "nethernet/identity.pem";
         @JsonProperty("verify-client-authentication")
@@ -105,6 +129,7 @@ public class Configuration {
 
         validateAddress(this.proxy);
         validateAddress(this.destination);
+
         InetSocketAddress listener = this.proxy.getAddress();
         if (this.transport == Transport.NETHERNET && listener.getAddress() != null && listener.getAddress().isLoopbackAddress()) {
             throw new IOException("NetherNet cannot accept retail clients on a loopback address. Set proxy.host to a local network address or 0.0.0.0");

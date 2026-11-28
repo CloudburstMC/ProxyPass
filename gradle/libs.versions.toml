@@ -1,8 +1,9 @@
 [versions]
 protocol = "3.0.0.Beta15-20261116.161745-6"
-jackson = "3.2.3"
-network = "2.0.0.CR6-20261115.174122-26"
-libdatachannel = "0.24.6.0-20261124.030142-12"
+jackson = "3.3.0"
+flatlaf = "3.8"
+network = "2.0.0.CR6-20261127.150356-27"
+libdatachannel = "0.24.6.0-20261127.134949-15"
 log4j = "2.26.1"
 slf4j = "2.0.20"
 junit = "6.1.3"
@@ -28,6 +29,10 @@ jansi = { group = "org.fusesource.jansi", name = "jansi", version = "2.4.3" }
 jline-reader = { group = "org.jline", name = "jline-reader", version = "4.6.0" }
 lombok = { group = "org.projectlombok", name = "lombok", version = "1.18.48" }
 spotbugs-annotations = { group = "com.github.spotbugs", name = "spotbugs-annotations", version = "4.10.5" }
+flatlaf = { group = "com.formdev", name = "flatlaf", version.ref = "flatlaf" }
+flatlaf-intellij = { group = "com.formdev", name = "flatlaf-intellij-themes", version.ref = "flatlaf" }
+minecraftauth = { group = "net.raphimc", name = "MinecraftAuth", version = "5.0.2" }
+zxing = { group = "com.google.zxing", name = "core", version = "3.5.4" }
 
 [plugins]
 shadow = { id = "com.gradleup.shadow", version = "9.6.1" }

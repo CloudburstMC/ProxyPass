@@ -1,5 +1,6 @@
 package org.cloudburstmc.proxypass;
 
+import com.formdev.flatlaf.intellijthemes.FlatArcDarkIJTheme;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
@@ -8,8 +9,8 @@ import io.netty.channel.ChannelFuture;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioDatagramChannel;
 import io.netty.util.ResourceLeakDetector;
-import lombok.AccessLevel;
 import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.log4j.Log4j2;
 import org.cloudburstmc.nbt.*;
 import org.cloudburstmc.netty.channel.nethernet.NetherNetChannelFactory;
@@ -23,24 +24,30 @@ import org.cloudburstmc.netty.util.nethernet.OperatorIdentity;
 import org.cloudburstmc.netty.util.nethernet.TokenTrust;
 import org.cloudburstmc.protocol.bedrock.BedrockPong;
 import org.cloudburstmc.protocol.bedrock.codec.BedrockCodec;
+import org.cloudburstmc.protocol.bedrock.codec.BedrockCodecHelper;
 import org.cloudburstmc.protocol.bedrock.codec.v2225.Bedrock_v2225;
+import org.cloudburstmc.protocol.bedrock.data.EncodingSettings;
 import org.cloudburstmc.protocol.bedrock.data.definitions.BlockDefinition;
 import org.cloudburstmc.protocol.bedrock.netty.BedrockPacketWrapper;
+import org.cloudburstmc.protocol.bedrock.packet.BedrockPacket;
 import org.cloudburstmc.protocol.bedrock.util.ChainValidationResult;
 import org.cloudburstmc.protocol.bedrock.util.EncryptionUtils;
 import org.cloudburstmc.protocol.common.DefinitionRegistry;
+import org.cloudburstmc.protocol.common.util.OptionalBoolean;
+import org.cloudburstmc.proxypass.auth.Account;
+import org.cloudburstmc.proxypass.auth.AuthHandler;
 import org.cloudburstmc.proxypass.network.Transport;
 import org.cloudburstmc.proxypass.network.bedrock.ProxyChannelInitializer;
-import org.cloudburstmc.proxypass.network.bedrock.jackson.ColorDeserializer;
-import org.cloudburstmc.proxypass.network.bedrock.jackson.ColorSerializer;
-import org.cloudburstmc.proxypass.network.bedrock.jackson.NbtDefinitionSerializer;
+import org.cloudburstmc.proxypass.network.bedrock.jackson.*;
 import org.cloudburstmc.proxypass.network.bedrock.logging.SessionLogger;
 import org.cloudburstmc.proxypass.network.bedrock.session.ProxyClientSession;
+import org.cloudburstmc.proxypass.network.bedrock.session.ProxyPlayerSession;
 import org.cloudburstmc.proxypass.network.bedrock.session.ProxyServerSession;
 import org.cloudburstmc.proxypass.network.bedrock.session.UpstreamPacketHandler;
 import org.cloudburstmc.proxypass.network.bedrock.util.NbtBlockDefinitionRegistry;
 import org.cloudburstmc.proxypass.network.bedrock.util.NbtBlockDefinitionRegistry.NbtBlockDefinition;
 import org.cloudburstmc.proxypass.network.bedrock.util.UnknownBlockDefinitionRegistry;
+import org.cloudburstmc.proxypass.ui.PacketLoggingWindow;
 import tools.jackson.core.Version;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.core.util.DefaultIndenter;
@@ -52,10 +59,12 @@ import tools.jackson.databind.json.JsonMapper;
 import tools.jackson.databind.module.SimpleModule;
 import tools.jackson.dataformat.yaml.YAMLMapper;
 
+import javax.annotation.Nullable;
 import java.awt.*;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.lang.reflect.Field;
 import java.net.InetSocketAddress;
 import java.nio.file.*;
 import java.security.KeyPair;
@@ -65,6 +74,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 @Log4j2
 @Getter
@@ -75,14 +85,49 @@ public class ProxyPass implements AutoCloseable {
     private static final SimpleModule MODULE = new SimpleModule("ProxyPass", Version.unknownVersion())
             .addSerializer(Color.class, new ColorSerializer())
             .addDeserializer(Color.class, new ColorDeserializer())
-            .addSerializer(NbtBlockDefinition.class, new NbtDefinitionSerializer());
+            .addSerializer(NbtBlockDefinition.class, new NbtDefinitionSerializer())
+            .addSerializer(OptionalBoolean.class, new OptionalBooleanSerializer())
+            .addSerializer(ByteBuf.class, new ByteBufSerializer());
 
     public static final String MINECRAFT_VERSION;
 
-    public static final BedrockCodec CODEC = Bedrock_v2225.CODEC;
-    public static final int PROTOCOL_VERSION = CODEC.getProtocolVersion();
+    public static BedrockCodec BASE_CODEC;
+    
+    static {
+        BedrockCodec selectedCodec;
+        BedrockCodec def = Bedrock_v2225.CODEC;
+        String codecVersion = System.getProperty("ProxyPass.CodecVersion");
+        if (codecVersion == null) {
+            selectedCodec = def;
+        } else {
+            try {
+                String path = "v" + codecVersion;
+                if (codecVersion.equals("2168_hotfix4")) {
+                    path = "v2168";
+                }
+                Class<?> codecClass = Class.forName("org.cloudburstmc.protocol.bedrock.codec." + path + ".Bedrock_v" + codecVersion);
 
-    private static final BedrockPong ADVERTISEMENT = new BedrockPong()
+                Field codecField = codecClass.getField("CODEC");
+                codecField.setAccessible(true);
+                selectedCodec = (BedrockCodec) codecField.get(null);
+            } catch (ClassNotFoundException | NoSuchFieldException | IllegalAccessException e) {
+                log.warn("Unable to find Codec specified in `-DProxyPass.CodecVersion`, using default. (%s v%s)".formatted(def.getMinecraftVersion(), def.getProtocolVersion()), e);
+                selectedCodec = def;
+            }
+        }
+        BASE_CODEC = selectedCodec;
+    }
+
+    public static BedrockCodec CODEC = BASE_CODEC.toBuilder()
+            .helper(() -> {
+                BedrockCodecHelper helper = BASE_CODEC.createHelper();
+                helper.setEncodingSettings(EncodingSettings.UNLIMITED);
+                return helper;
+            }).build();
+            
+    public static int PROTOCOL_VERSION = CODEC.getProtocolVersion();
+
+    private static BedrockPong ADVERTISEMENT = new BedrockPong()
             .edition("MCPE")
             .gameType("Survival")
             .version(ProxyPass.CODEC.getMinecraftVersion())
@@ -96,6 +141,31 @@ public class ProxyPass implements AutoCloseable {
     private static final DefaultPrettyPrinter PRETTY_PRINTER;
 
     public static Map<Integer, String> legacyIdMap = new HashMap<>();
+    
+    public static void setNewCodec(BedrockCodec codec) {
+        if (codec.getMinecraftVersion().equals(CODEC.getMinecraftVersion()) && codec.getProtocolVersion() == PROTOCOL_VERSION) return;
+        
+        log.info("Setting codec to {} (v{})", codec.getMinecraftVersion(), codec.getProtocolVersion());
+        
+        BASE_CODEC = codec;
+        CODEC = BASE_CODEC.toBuilder()
+            .helper(() -> {
+                BedrockCodecHelper helper = BASE_CODEC.createHelper();
+                helper.setEncodingSettings(EncodingSettings.UNLIMITED);
+                return helper;
+            }).build();
+        PROTOCOL_VERSION = CODEC.getProtocolVersion();
+        ADVERTISEMENT = new BedrockPong()
+            .edition("MCPE")
+            .gameType("Survival")
+            .version(ProxyPass.CODEC.getMinecraftVersion())
+            .protocolVersion(ProxyPass.PROTOCOL_VERSION)
+            .motd("ProxyPass")
+            .playerCount(0)
+            .maximumPlayerCount(20)
+            .subMotd("https://github.com/CloudburstMC/ProxyPass")
+            .nintendoLimited(false);
+    }
 
     static {
         DefaultIndenter indenter = new DefaultIndenter("    ", "\n");
@@ -121,13 +191,11 @@ public class ProxyPass implements AutoCloseable {
         MINECRAFT_VERSION = CODEC.getMinecraftVersion();
     }
 
-    private final AtomicBoolean running = new AtomicBoolean(true);
+    private final AtomicBoolean running = new AtomicBoolean(false);
     private final AtomicBoolean closed = new AtomicBoolean();
 
-    private final NioEventLoopGroup eventLoopGroup = new NioEventLoopGroup();
+    private NioEventLoopGroup eventLoopGroup = new NioEventLoopGroup();
     private final Set<Channel> clients = ConcurrentHashMap.newKeySet();
-    @Getter(AccessLevel.NONE)
-    private final Set<Class<?>> ignoredPackets = Collections.newSetFromMap(new IdentityHashMap<>());
     private Channel server;
     private final Set<Channel> connections = ConcurrentHashMap.newKeySet();
     private int maxClients = 0;
@@ -138,40 +206,59 @@ public class ProxyPass implements AutoCloseable {
     private Path dataDir;
     private DefinitionRegistry<BlockDefinition> blockDefinitions;
     private DefinitionRegistry<BlockDefinition> blockDefinitionsHashed;
+    private Account currentAccount;
+    @Setter
+    private Consumer<ProxyPlayerSession> sessionInitHandler = (ignored) -> {};
 
     public static void main(String[] args) {
         ResourceLeakDetector.setLevel(ResourceLeakDetector.Level.DISABLED);
-        ProxyPass proxy = new ProxyPass();
+        List<String> arguments = List.of(args);
+        
+        try {
+            if (arguments.contains("ui")) {
+                FlatArcDarkIJTheme.setup();
+                new PacketLoggingWindow();
+                return;
+            }
+            log.info("Loading configuration...");
+            Path configPath = Paths.get(".").resolve("config.yml");
 
-        try (proxy) {
-            Runtime.getRuntime().addShutdownHook(new Thread(proxy::shutdown, "ProxyPass shutdown"));
-            proxy.boot();
+            if (Files.notExists(configPath) || !Files.isRegularFile(configPath)) {
+                try (InputStream input = Objects.requireNonNull(ProxyPass.class.getClassLoader().getResourceAsStream("config.yml"), "config.yml")) {
+                    Files.copy(input, configPath, StandardCopyOption.REPLACE_EXISTING);
+                }
+            }
+
+            Configuration configuration = Configuration.load(configPath);
+            
+            ProxyPass proxy = new ProxyPass();
+
+            try (proxy) {
+                Runtime.getRuntime().addShutdownHook(new Thread(proxy::shutdown, "ProxyPass shutdown"));
+                proxy.boot(configuration, AuthHandler.authenticateCli(configuration));
+            } catch (Exception e) {
+                throw new IOException(e);
+            }
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
-    public void boot() throws IOException {
-        log.info("Loading configuration...");
-        Path configPath = Paths.get(".").resolve("config.yml");
-
-        if (Files.notExists(configPath) || !Files.isRegularFile(configPath)) {
-            try (InputStream input = Objects.requireNonNull(ProxyPass.class.getClassLoader().getResourceAsStream("config.yml"), "config.yml")) {
-                Files.copy(input, configPath, StandardCopyOption.REPLACE_EXISTING);
-            }
+    public void boot(Configuration configuration, @Nullable Account currentAccount) throws IOException {
+        if (this.eventLoopGroup.isTerminated() || this.eventLoopGroup.isShuttingDown() || this.eventLoopGroup.isShutdown()) {
+            this.eventLoopGroup = new NioEventLoopGroup();
+        }
+        
+        this.configuration = configuration;
+        this.currentAccount = currentAccount;
+        if (this.currentAccount != null) {
+            log.info("Authenticated as {}.", AuthHandler.getAccountName(this.currentAccount.toJson()));
+        } else {
+            log.info("Not authenticated.");
         }
 
-        configuration = Configuration.load(configPath);
         targetAddress = configuration.getDestination().getAddress();
         maxClients = configuration.getMaxClients();
-
-        configuration.getIgnoredPackets().forEach(s -> {
-            try {
-                ignoredPackets.add(Class.forName("org.cloudburstmc.protocol.bedrock.packet." + s));
-            } catch (ClassNotFoundException e) {
-                log.warn("No packet with name {}", s);
-            }
-        });
 
         baseDir = Paths.get(".").toAbsolutePath();
         sessionsDir = baseDir.resolve("sessions");
@@ -189,9 +276,9 @@ public class ProxyPass implements AutoCloseable {
             this.blockDefinitions = this.blockDefinitionsHashed = new UnknownBlockDefinitionRegistry();
             log.warn("Failed to load block palette. Blocks will appear as runtime IDs in packet traces and creative_content.json!");
         }
-
         this.bindListener(this.configuration.getProxy());
 
+        running.set(true);
         loop();
     }
 
@@ -229,7 +316,7 @@ public class ProxyPass implements AutoCloseable {
 
         bootstrap.childHandler(new ProxyChannelInitializer<>(this, this.configuration.getTransport(), true,
                 (peer, id) -> new ProxyServerSession(peer, id, this),
-                session -> session.setPacketHandler(new UpstreamPacketHandler(session, this))));
+                session -> session.setPacketHandler(new UpstreamPacketHandler(session, this, currentAccount))));
         ChannelFuture bound = bootstrap.bind(listener.getAddress()).awaitUninterruptibly();
         if (!bound.isSuccess()) {
             bound.channel().close();
@@ -240,7 +327,8 @@ public class ProxyPass implements AutoCloseable {
         log.info("{} listener started on {}", this.configuration.getTransport(), listener.getAddress());
     }
 
-    public CompletableFuture<ProxyClientSession> newClient(KeyPair keyPair, ChainValidationResult.IdentityData identity, Consumer<ProxyClientSession> sessionConsumer) {
+    public CompletableFuture<ProxyClientSession> newClient(KeyPair keyPair, ChainValidationResult.IdentityData identity,
+                                                           @Nullable String identityToken, Consumer<ProxyClientSession> sessionConsumer) {
         CompletableFuture<ProxyClientSession> result = new CompletableFuture<>();
         Configuration.Address destination = this.configuration.getDestination();
         log.info("Connecting {} to backend {} using {}", identity.displayName, this.targetAddress, this.configuration.getTransport());
@@ -251,8 +339,11 @@ public class ProxyPass implements AutoCloseable {
                 bootstrap.channelFactory(RakChannelFactory.client(NioDatagramChannel.class))
                         .option(RakChannelOption.RAK_PROTOCOL_VERSION, CODEC.getRaknetProtocolVersion());
             } else {
-                OperatorIdentity assertion = new OperatorIdentity(keyPair.getPrivate(), keyPair.getPublic(), null, "ProxyPass")
-                        .forPlayer(identity.xuid, identity.displayName);
+                // A backend verifying client authentication only trusts tokens issued by Minecraft's auth service
+                OperatorIdentity assertion = identityToken != null
+                        ? OperatorIdentity.fromToken(keyPair, identityToken, "ProxyPass")
+                        : new OperatorIdentity(keyPair.getPrivate(), keyPair.getPublic(), null, "ProxyPass")
+                                .forPlayer(identity.xuid, identity.displayName);
                 bootstrap.channelFactory(NetherNetChannelFactory.client(() -> new NetherNetHTTPClientSignaling(destination.signalingSettings())))
                         .option(NetherChannelOption.NETHER_CLIENT_IDENTITY, assertion)
                         .option(NetherChannelOption.NETHER_CLIENT_HANDSHAKE_TIMEOUT_MS, 30000);
@@ -302,16 +393,17 @@ public class ProxyPass implements AutoCloseable {
     }
 
     private void loop() {
-        while (running.get()) {
-            try {
-                synchronized (this) {
-                    this.wait();
+        new Thread(() -> {
+            while (running.get()) {
+                try {
+                    synchronized (this) {
+                        this.wait();
+                    }
+                } catch (InterruptedException e) {
+                    this.shutdown();
                 }
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                this.shutdown();
             }
-        }
+        }).start();
     }
 
     @Override
@@ -431,8 +523,22 @@ public class ProxyPass implements AutoCloseable {
         }
     }
 
+    public void resetConfig(Configuration configuration) {
+        this.configuration = configuration;
+        // Proxy Address and Target Address are **not** reset during runtime
+        // Max clients aren't reset either since there isn't a UI element to set that currently
+    }
+
     public boolean isIgnoredPacket(Class<?> clazz) {
-        return this.ignoredPackets.contains(clazz);
+        return this.configuration.getIgnoredPackets().contains(clazz.getSimpleName());
+    }
+
+    public boolean isBlockedPacket(Class<?> clazz) {
+        return this.configuration.getBlockedPackets().contains(clazz.getSimpleName());
+    }
+
+    public void setBlockedPackets(Set<Class<? extends BedrockPacket>> blockedPackets) {
+        this.configuration.setBlockedPackets(blockedPackets.stream().map(Class::getSimpleName).collect(Collectors.toSet()));
     }
 
     public boolean isFull() {

@@ -19,10 +19,10 @@ public class ColorSerializer extends StdSerializer<Color> {
             gen.writeNull();
         } else {
             gen.writeStartObject();
-            gen.writeNumberProperty("a", value.getAlpha());
-            gen.writeNumberProperty("r", value.getRed());
-            gen.writeNumberProperty("g", value.getGreen());
-            gen.writeNumberProperty("b", value.getBlue());
+            gen.writeNumberProperty("alpha", value.getAlpha());
+            gen.writeNumberProperty("red", value.getRed());
+            gen.writeNumberProperty("green", value.getGreen());
+            gen.writeNumberProperty("blue", value.getBlue());
             gen.writeEndObject();
         }
     }
